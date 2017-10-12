@@ -1,0 +1,8 @@
+{
+    "git.ignoreLimitWarning": true,
+    "files.associations": {
+        "interceptor.h": "c",
+        "kernel.h": "c",
+        "unistd.h": "c"
+    }
+}
