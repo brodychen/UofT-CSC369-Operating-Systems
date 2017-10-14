@@ -59,28 +59,27 @@ void init_intersection() {
         pthread_mutex_init(isection.quad + i, NULL);
     }
 
-    // Init lane 
+    // Init each lane 
     for(i = 0; i < 4; ++i) {
 
         // Init mutex and cond_vars
-        pthread_mutex_init(&(isection.lane[i].lock), NULL);
-        pthread_cond_init(&(isection.lane[i].producer_cv), NULL);
-        pthread_cond_init(&(isection.lane[i].consumer_cv), NULL);
+        pthread_mutex_init(&(isection.lanes[i].lock), NULL);
+        pthread_cond_init(&(isection.lanes[i].producer_cv), NULL);
+        pthread_cond_init(&(isection.lanes[i].consumer_cv), NULL);
 
         // Init list heads to NULL
-        isection.lane[i].in_cars = NULL;
-        isection.lane[i].out_cars = NULL;
+        isection.lanes[i].in_cars = NULL;
+        isection.lanes[i].out_cars = NULL;
 
-        // Other variables
-        isection.lane[i].inc = 0;
-        isection.lane[i].passed = 0;
+        // Init buffer. Buffers are released when corresponding car_cross returns
+        isection.lanes[i].buffer = malloc(LANE_LENGTH * sizeof(struct car*));
         
-        // Init buffer
-        isection.lane[i].buffer = malloc(LANE_LENGTH * sizeof(struct car*));
-        isection.lane[i].head = 0;
-        isection.lane[i].tail = 0;
-        isection.lane[i].capacity = LANE_LENGTH;
-        isection.lane[i].in_buf = 0;
+        // Init other variables
+        isection.lanes[i].passed = 0;
+        isection.lanes[i].head = 0;
+        isection.lanes[i].tail = 0;
+        isection.lanes[i].capacity = LANE_LENGTH;
+        isection.lanes[i].in_buf = 0;
 
     }
 
@@ -103,23 +102,23 @@ void *car_arrive(void *arg) {
         pthread_mutex_lock(&(l -> lock));
 
         // If buffer full, wait for space
-        while(l.in_buf == LANE_LENGTH) {
+        while(l -> in_buf == LANE_LENGTH) {
             pthread_cond_wait(&(l -> consumer_cv), &(l -> lock));
         }
 
         // Get the first car from list in_cars
-        buffer[tail] = l -> in_cars;
+        l -> buffer[l -> head] = l -> in_cars;
         l -> in_cars = l -> in_cars -> next;
-        tail = (tail + 1) % LANE_LENGTH;
-        
+        l -> head = (l -> head + 1) % LANE_LENGTH;
+
         // Update lane variables
-        ++(l -> inc);
         ++(l -> in_buf);
+        ++(l -> passed);
 
         // Signal producer_cv
         pthread_cond_signal(&(l -> producer_cv));
 
-        pthread_mutex_lock(&l.lock);
+        pthread_mutex_unlock(&(l -> lock));
 
     }
 
@@ -153,6 +152,48 @@ void *car_arrive(void *arg) {
  */
 void *car_cross(void *arg) {
     struct lane *l = arg;
+    int i;
+    int *locks;
+
+    // While there are cars pending or in buffer
+    while(l -> in_cars != NULL || l -> in_buf != 0) {
+        
+        pthread_mutex_lock(&(l -> lock));
+
+        // If buffer empty, wait for buffer to fill up
+        while(l -> in_buf == 0) {
+            pthread_cond_wait(&(l -> producer_cv), &(l -> lock));
+        }
+
+        // Get earliest car in buffer, and acquire locks
+        locks = compute_path(l -> buffer[l -> tail] -> in_dir, l -> buffer[l -> tail] -> out_dir);
+        for(i = 0; locks[i] != 0 && i < 4; ++i) {
+            pthread_mutex_lock(&isection.quad[locks[i] - 1]);
+        }
+
+        // Lock acquired, remove car from buffer to head of out_cars
+        l -> buffer[l -> tail] -> next = l -> out_cars;
+        l -> out_cars = l -> buffer[l -> tail];
+        l -> buffer[l -> tail] = NULL;
+        l -> tail = (l -> tail + 1) % LANE_LENGTH;
+        --(l -> in_buf);
+        fprintf(stderr, "%d %d %d\n", l -> out_cars -> in_dir, l -> out_cars -> out_dir, l -> out_cars -> id);
+
+        // Relinquish Locks and free memory allocated in compute_path()
+        for(i = 0; locks[i] != 0 && i < 4; ++i) {
+            pthread_mutex_unlock(&isection.quad[locks[i] - 1]);
+        }
+        free(locks);
+        
+        // Signal consumer_cv
+        pthread_cond_signal(&(l -> consumer_cv));
+
+        pthread_mutex_unlock(&(l -> lock));
+
+    }
+
+    // Free lane buffer
+    free(l -> buffer);
 
     /* avoid compiler warning */
     l = l;
@@ -174,33 +215,33 @@ void *car_cross(void *arg) {
     // Local Variables
     int i, j = 0;
     
-    int *passed = (int *)malloc(4 * sizeof(int));
+    int *passed_quadrant = (int *)malloc(4 * sizeof(int));
     int *path = (int *)malloc(4 * sizeof(int));
-    memset(passed, 0, 4 * sizeof(int));
+    memset(passed_quadrant, 0, 4 * sizeof(int));
     memset(path, 0, 4 * sizeof(int));
     
     // Calculate which quadrant to pass, and set the corresponding flag in passed to 1
     if(in_dir == out_dir) {
-        // Cars make U-turns, takes up all quadrants
-        memset(passed, 1, 4 * sizeof(int));
+        // Cars make U-turns, takes all four quadrants
+        memset(passed_quadrant, 1, 4 * sizeof(int));
     }
     else{
         // Otherwise
         for(i = (in_dir + 1) % 4 + 1; i != out_dir + 2; ++i) {
             if(i == 5) i = 1;
-            passed[i - 1] = 1;
+            passed_quadrant[i - 1] = 1;
         }
     }
     
-    // Generate list of passed quadrants. Pad 0s at the end.
-    for(i = 1; i <= 4; ++i) {
-        if(passed[i - 1]) {
-            path[j++] = i;
+    // Generate an array of length 4. Pad 0 at the end if necessary.
+    for(i = 0; i < 4; ++i) {
+        if(passed_quadrant[i]) {
+            path[j++] = i + 1;
         }
     }
     
     // Release Memory and return
-    free(passed);
+    free(passed_quadrant);
     return path;
     
 }

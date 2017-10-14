@@ -30,6 +30,7 @@ void verify() {
 }
 
 int main(int argc, char *argv[]) {
+
     int i;
     pthread_t in_threads[4], cross_threads[4];
 
