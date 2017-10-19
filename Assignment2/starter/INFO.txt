@@ -1,0 +1,25 @@
+Name: 	Zhaoning Kong
+UtorID: 1004654288
+SVN Revision Number:	1
+
+
+--- Discussion ---
+
+This monitor will not cause starvation.
+
+For car_arrive() and car_cross() threads within each lane, a monitor is used to ensure necessary synchronization. When buffer is partially full, there are chances for either thread(if both have not terminated) to acquire the lock and perform its task. In cases where buffer is full or empty, the car_arrive()/car_cross() thread releases the lock for the other thread.
+
+For the four locks within the intersection, each of the four car_cross() threads tries to acquire the locks in fixed order, such that deadlock will never occur. It depends on pure chance which thread will acquire the lock, which guarantees fairness for cars from all directions.
+
+
+--- Problems encountered ---
+Initially I checked the return conditions of car_cross() and car_arrive() without acquiring the locks(a.k.a. using a while loop whereas the lock is acquired/released upon entering/exiting a new loop). Although valgrind have reported possible data race, no crash/mistake have been observed. (I did fix the problem though, with a while(1) loop)
+
+
+--- What isn't fully implemented (possibly) ---
+In cases where car_cross() have acquired some but not all locks needed to cross, it holds the lock of its corresponding lane, such that preventing car_arrive() from appending new cars to its buffer. It is possible that efficiency is reduced.
+
+However, this is probably the best we can do with locks given in this assignment. If we can release the lock when only part of the locks are acquired, the car_arrive() can then append cars instead of waiting for the lock, but that would probably require a monitor.
+
+
+
