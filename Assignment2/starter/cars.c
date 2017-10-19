@@ -164,7 +164,7 @@ void *car_cross(void *arg) {
 
     // While there are cars pending or in buffer
     // Return condition checked with lock acquired to avoid conflict with car_arrive
-    while(1) {}
+    while(1) {
         
         pthread_mutex_lock(&(l -> lock));
 
