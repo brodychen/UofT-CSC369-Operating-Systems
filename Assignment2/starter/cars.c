@@ -97,10 +97,17 @@ void *car_arrive(void *arg) {
     struct lane *l = arg;
 
     // While there are cars pending to pass through the line
-    while(l -> in_cars != NULL) {
+    // while(l -> in_cars != NULL) {
+    while(1) {
 
         pthread_mutex_lock(&(l -> lock));
 
+        // If no more incoming cars, return
+        if(l -> in_cars == NULL) {
+            pthread_mutex_unlock(&(l -> lock));
+            break;
+        }
+ 
         // If buffer full, wait for space
         while(l -> in_buf == LANE_LENGTH) {
             pthread_cond_wait(&(l -> consumer_cv), &(l -> lock));
@@ -156,9 +163,16 @@ void *car_cross(void *arg) {
     int *locks;
 
     // While there are cars pending or in buffer
-    while(l -> in_cars != NULL || l -> in_buf != 0) {
+    // while(l -> in_cars != NULL || l -> in_buf != 0) {
+    while(1) {}
         
         pthread_mutex_lock(&(l -> lock));
+
+        // If all cars have crossed, return
+        if(l -> in_cars == NULL && l -> in_buf == 0) {
+            pthread_mutex_unlock(&(l -> lock));
+            break;
+        }
 
         // If buffer empty, wait for buffer to fill up
         while(l -> in_buf == 0) {
