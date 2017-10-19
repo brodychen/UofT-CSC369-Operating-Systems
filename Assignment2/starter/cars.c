@@ -97,7 +97,7 @@ void *car_arrive(void *arg) {
     struct lane *l = arg;
 
     // While there are cars pending to pass through the line
-    // while(l -> in_cars != NULL) {
+    // Return condition checked with lock acquired to avoid conflict with car_cross
     while(1) {
 
         pthread_mutex_lock(&(l -> lock));
@@ -163,7 +163,7 @@ void *car_cross(void *arg) {
     int *locks;
 
     // While there are cars pending or in buffer
-    // while(l -> in_cars != NULL || l -> in_buf != 0) {
+    // Return condition checked with lock acquired to avoid conflict with car_arrive
     while(1) {}
         
         pthread_mutex_lock(&(l -> lock));
