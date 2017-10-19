@@ -191,7 +191,7 @@ void *car_cross(void *arg) {
         l -> buffer[l -> tail] = NULL;
         l -> tail = (l -> tail + 1) % LANE_LENGTH;
         --(l -> in_buf);
-        fprintf(stderr, "%d %d %d\n", l -> out_cars -> in_dir, l -> out_cars -> out_dir, l -> out_cars -> id);
+        fprintf("%d %d %d\n", l -> out_cars -> in_dir, l -> out_cars -> out_dir, l -> out_cars -> id);
 
         // Relinquish Locks and free memory allocated in compute_path()
         for(i = 0; locks[i] != 0 && i < 4; ++i) {
