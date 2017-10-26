@@ -3,5 +3,5 @@ heaploop
 matmu
 
 # Swap files
-*.swp
+.swp*
 *.nfs
