@@ -4,3 +4,4 @@ matmu
 
 # Swap files
 *.swp
+*.nfs
