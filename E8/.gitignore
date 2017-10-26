@@ -1,7 +1,7 @@
 # Binary files
-heaploop
-matmu
+/heaploop
+/matmu
 
 # Swap files
-.swp*
-*.nfs
+/*.swp
+/nfs*
