@@ -2,3 +2,6 @@
 blocked
 matmul
 simpleloop
+
+# Others
+.nfs*
