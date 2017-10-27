@@ -7,3 +7,6 @@ pagetable
 rand
 sim
 swap
+
+# .o Files
+*.o
