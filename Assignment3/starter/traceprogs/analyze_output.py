@@ -8,6 +8,7 @@ def analyze(file):
     # Count data and instruction separately
     data = dict()
     instruction = dict()
+    all = dict()
 
     # Add to dict
     def add_to_dict(d, vpn):
@@ -28,10 +29,12 @@ def analyze(file):
             add_to_dict(instruction, vpn)
         else:
             add_to_dict(data, vpn)
+        add_to_dict(all, vpn)
     
     len_instruction = len(instruction)
     len_data = len(data)
-    print('# Total pages:\t', len_instruction + len_data)
+    len_all = len(all)
+    print('# Total pages:\t', len_all)
     print('# Instruction pages:\t', len_instruction)
     print_dict(instruction)
     print('# Data pages:\t', len_data)
