@@ -72,7 +72,7 @@ bitmap_alloc(struct bitmap *b, unsigned *index)
                 if (b->v[ix]!=WORD_ALLBITS) {
                         for (offset = 0; offset < BITS_PER_WORD; offset++) {
                                 unsigned mask = ((unsigned)1) << offset;
-
+			
                                 if ((b->v[ix] & mask)==0) {
                                         b->v[ix] |= mask;
                                         *index = (ix*BITS_PER_WORD)+offset;
