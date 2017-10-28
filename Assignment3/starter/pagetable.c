@@ -40,6 +40,10 @@ int allocate_frame(pgtbl_entry_t *p) {
 		// Write victim page to swap, if needed, and update pagetable
 		// IMPLEMENTATION NEEDED
 		
+		// Only swap to disk if page is dirty
+		if((p -> frame) & PG_DIRTY) {
+			swap_pagein(p -> frame >> PAGE_SHIFT);
+		}
 
 	}
 
