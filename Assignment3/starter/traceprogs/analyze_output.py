@@ -22,16 +22,19 @@ def analyze(file):
             print(number)
 
     for line in f.readlines():
-        address, type = line.split(',')
+        type, address = line.split()
         vpn = address[:-3]
         if type[0] == 'I':
             add_to_dict(instruction, vpn)
         else:
             add_to_dict(data, vpn)
-            
-    print('Instructions:')
+    
+    len_instruction = len(instruction)
+    len_data = len(data)
+    print('# Total pages:\t', len_instruction + len_data)
+    print('# Instruction pages:\t', len_instruction)
     print_dict(instruction)
-    print('Data:')
+    print('# Data pages:\t', len_data)
     print_dict(data)
 
 
