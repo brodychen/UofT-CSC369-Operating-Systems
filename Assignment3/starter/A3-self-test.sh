@@ -2,7 +2,8 @@
 
 GOLDENDIR=/u/csc369h/fall/pub/public/A3-self-test
 USER=`whoami`
-TESTDIR=A3-self-test-dir
+# TESTDIR=A3-self-test-dir
+TESTDIR=/csc369/UofT-CSC369-Operating-Systems/Assignment3/A3-self-test-dir
 CURDIR=`pwd`
 
 echo "CSC369 A3 Self-Tester Script"
@@ -12,9 +13,10 @@ echo ""
 echo "Checking out SVN repo..."
 
 # Checkout repo
-svn co https://markus.teach.cs.toronto.edu/svn/csc369-2016-09/$USER/A3/  "$TESTDIR"
+# svn co https://markus.teach.cs.toronto.edu/svn/csc369-2017-09/$USER/A3/  "$TESTDIR"
+cp -r ~/csc369/UofT-CSC369-Operating-Systems/Assignment3/starter "$TESTDIR"
 
-if [ $? -ne 0 ]; then
+if [ $? -e 0 ]; then
 	echo "Failed to check out repo!"
 	exit 1
 fi
@@ -76,4 +78,5 @@ echo "Total Mark: $TOTAL/$MAXTOTAL"
 rm -rf *trace*
 
 cd $CURDIR
+LDENDIR/traces/
 rm -rf $TESTDIR
