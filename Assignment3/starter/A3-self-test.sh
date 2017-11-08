@@ -3,18 +3,19 @@
 GOLDENDIR=/u/csc369h/fall/pub/public/A3-self-test
 USER=`whoami`
 # TESTDIR=A3-self-test-dir
-TESTDIR=/csc369/UofT-CSC369-Operating-Systems/Assignment3/A3-self-test-dir
+TESTDIR=../A3-self-test-dir
 CURDIR=`pwd`
 
 echo "CSC369 A3 Self-Tester Script"
 echo "****************************"
 echo "This self-tester allows you to confirm that the course team will be able to check out and compile your code. In addition, it also runs a subset of the test cases that will be used to grade your assignment."
 echo ""
-echo "Checking out SVN repo..."
+# echo "Checking out SVN repo..."
+echo "Starting test"
 
 # Checkout repo
 # svn co https://markus.teach.cs.toronto.edu/svn/csc369-2017-09/$USER/A3/  "$TESTDIR"
-cp -r ~/csc369/UofT-CSC369-Operating-Systems/Assignment3/starter "$TESTDIR"
+cp -a ~/csc369/UofT-CSC369-Operating-Systems/Assignment3/starter/. "$TESTDIR"
 
 if [ $? -e 0 ]; then
 	echo "Failed to check out repo!"
