@@ -8,5 +8,6 @@ rand
 sim
 swap
 
-# .o Files
 *.o
+.vscode
+*.swp
