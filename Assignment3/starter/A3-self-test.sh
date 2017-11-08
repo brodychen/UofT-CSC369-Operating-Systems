@@ -53,6 +53,7 @@ MAX=2
 MAXTOTAL=10
 
 TOTAL=0
+# for algo in rand opt fifo lru clock; do
 for algo in rand opt fifo lru clock; do
 	MARK=0
 	for trace in 1_trace 4_trace; do
@@ -76,8 +77,8 @@ echo ""
 
 echo "Total Mark: $TOTAL/$MAXTOTAL"
 
-rm -rf *trace*
+# rm -rf *trace*
 
 cd $CURDIR
 LDENDIR/traces/
-rm -rf $TESTDIR
+# rm -rf $TESTDIR

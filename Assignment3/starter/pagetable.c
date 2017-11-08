@@ -162,7 +162,7 @@ char *find_physpage(addr_t vaddr, char type) {
 	// --- Get index into page table
 	idx = PGTBL_INDEX(vaddr);
 	// --- Point p to corresponding pagetable entry
-	p = pgtbl + idx;
+	p = &pgtbl[idx];
 
 
 	// Check if p is valid or not, on swap or not, and handle appropriately
@@ -176,17 +176,24 @@ char *find_physpage(addr_t vaddr, char type) {
 		(p -> frame) |= PG_DIRTY;			// Set new page to dirty
 
 		++miss_count;						// Cold miss, increment counter
+		coremap[frame].new_swapin = 1;		// Mark page as new for FIFO
+		coremap[frame].referenced = 1;		// Mark page as referenced for CLOCK
 	}
 	// --- If p is not valid but already on swap, swap in from disk
 	else if(((p -> frame) & PG_VALID) == 0 && ((p -> frame) & PG_ONSWAP)) {
 		// --- Swap current phy page to memory
 		int frame = evict_fcn();			// Get physical addr
+		// int frame = p -> frame >> PAGE_SHIFT;
 
 		assert(coremap[frame].in_use);		// Make sure phy page in use
 		// --- Only swap if page in dirty
 		if(((coremap[frame].pte) -> frame) & PG_DIRTY) {
 			int offset_out = swap_pageout(frame, (coremap[frame].pte) -> swap_off);
+			if(((coremap[frame].pte) -> swap_off) != -1) {
+				assert((coremap[frame].pte) -> swap_off == offset_out);
+			}
 			(coremap[frame].pte) -> swap_off = offset_out;
+
 			++evict_dirty_count;			// Dirty eviction
 		} else {
 			++evict_clean_count;			// Clean eviction
@@ -199,8 +206,12 @@ char *find_physpage(addr_t vaddr, char type) {
 		// --- Swap page in
 		swap_pagein(frame, p -> swap_off);	// Swap called page to memory
 		coremap[frame].pte = p;				// Update coremap
+		p -> frame = frame << PAGE_SHIFT;	// Update new frame in pte
+		p -> frame |= PG_REF;				// Set page referenced
 		(p -> frame) &= ~PG_DIRTY;			// Set swapped in page clean
 		++miss_count;						// Capacity miss, increment counter
+		coremap[frame].new_swapin = 1;		// Mark page as new for FIFO
+		coremap[frame].referenced = 1;		// Mark page as referenced for CLOCK
 	}
 	// --- Page valid, increment hit count
 	else {

@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
 	init_fcn();
 
 	replay_trace(tfp);
-	print_pagedirectory();
+	// print_pagedirectory();
 
 	// Cleanup - removes temporary swapfile.
 	swap_destroy();

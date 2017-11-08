@@ -53,7 +53,7 @@ typedef struct {
 // Page table entry (2nd-level). 
 typedef struct { 
 	unsigned int frame; // if valid bit == 1, physical frame holding vpage
-	off_t swap_off;       // offset in swap file of vpage, if any
+	off_t swap_off;     // offset in swap file of vpage, if any
 } pgtbl_entry_t;    
 
 extern void init_pagetable();
@@ -62,9 +62,13 @@ extern char *find_physpage(addr_t vaddr, char type);
 extern void print_pagedirectory(void);
 
 struct frame {
-	char in_use;       // True if frame is allocated, False if frame is free
-	pgtbl_entry_t *pte;// Pointer back to pagetable entry (pte) for page
-	                   // stored in this frame
+	char in_use;       	// True if frame is allocated, False if frame is free
+	pgtbl_entry_t *pte;	// Pointer back to pagetable entry (pte) for page
+					   	// stored in this frame
+	int timestamp;		// Timestamp for exact-LRU
+	int new_swapin;		// boolean value indicating whether page just swapped in for FIFO
+	int referenced;		// boolean value for CLOCK
+	int nextAccessTime;	// Time this frame get referenced next time
 };
 
 /* The coremap holds information about physical memory.
