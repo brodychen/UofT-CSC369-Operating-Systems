@@ -21,7 +21,6 @@ int time;
  */
 
 int lru_evict() {
-
 	// Find the page with smallest timestamp
 	int i, minTime = time, minPos;
 	for(i = 0; i < memsize; ++i) {
@@ -39,11 +38,8 @@ int lru_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void lru_ref(pgtbl_entry_t *p) {
-
-	assert(coremap[p -> frame >> PAGE_SHIFT].in_use);
 	// On reference, refresh corresponding physical memory's timestamp
 	coremap[p -> frame >> PAGE_SHIFT].timestamp = time++;
-
 	return;
 }
 

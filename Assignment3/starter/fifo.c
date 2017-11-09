@@ -21,7 +21,6 @@ int time;	// Global time variable
  
 
 int fifo_evict() {
-
 	// Find the page with smallest timestamp
 	int i, minTime = time, minPos;
 	for(i = 0; i < memsize; ++i) {
@@ -32,7 +31,6 @@ int fifo_evict() {
 	}
 
 	return minPos;
-
 }
 
 /* This function is called on each access to a page to update any information
@@ -40,7 +38,6 @@ int fifo_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void fifo_ref(pgtbl_entry_t *p) {
-
 	// Check if this page was just swapped in or allocated
 	// If so, then update its timestamp, and clear new_swapin
 	if(coremap[p -> frame >> PAGE_SHIFT].new_swapin) {
@@ -49,7 +46,6 @@ void fifo_ref(pgtbl_entry_t *p) {
 	}
 
 	++time; 	// Increment time at each reference
-
 	return;
 }
 

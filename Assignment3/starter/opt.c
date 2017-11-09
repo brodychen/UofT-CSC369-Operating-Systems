@@ -8,18 +8,29 @@
 #include "sim.h"
 
 
+/* This OPT algorithm have time complxity of O(n * logn).
+ * It creates an array nextAccessTime whose size if equal to number of memory accesses.
+ * For pages on physical memory, its next access time is in coremap.
+ * On every eviction, loop through coremap to find the optimal frame.
+ */
+
+
 // extern int memsize;
 extern unsigned memsize;
-
 extern int debug;
-
 extern struct frame *coremap;
 
-int traceSize;		// Total num of memory accesses
-int *vPageRecord;	// List of virtual page accesses 
-int *nextAccessTime;	// Time of next access of same virtual page
-int time;
+int traceSize;			// Numner of memory accesses (aka size of tracefile)
+int *vPageRecord;		// Virtual page of each access
+int *nextAccessTime;	// Next access time of same virtual page
+int time;				// 
 
+
+/* Struct used to construct a BST to determine the next memory access 
+ * for each virtual page.
+ * vPage: The VPN of a virtual page
+ * time: 
+ */
 typedef struct _Record {
 	int vPage;
 	int time;
@@ -27,11 +38,12 @@ typedef struct _Record {
 	struct _Record *right;
 } Record;
 
-// Function declarations
+// Forward declarations
 int update(Record *root, int vPage, int timeNew);
 void destroy_tree(Record *root);
 
-/* Page to evict is chosen using the optimal (aka MIN) algorithm. 
+/* 
+ * Page to evict is chosen using the optimal (aka MIN) algorithm. 
  * Returns the page frame number (which is also the index in the coremap)
  * for the page that is to be evicted.
  */
@@ -51,8 +63,7 @@ int opt_evict() {
 		else if(coremap[i].nextAccessTime > latestTime) {
 			latestTime = coremap[i].nextAccessTime;
 			latestFrame = i;
-		}
-		
+		}	
 	}
 
 	return latestFrame;
@@ -68,7 +79,8 @@ void opt_ref(pgtbl_entry_t *p) {
 	coremap[p -> frame >> PAGE_SHIFT].nextAccessTime = nextAccessTime[time];
 
 	// Clean data structures on last reference
-	if(++time == traceSize) {
+	++time;
+	if(time == traceSize) {
 		free(vPageRecord);
 		free(nextAccessTime);
 	}
@@ -81,10 +93,10 @@ void opt_ref(pgtbl_entry_t *p) {
 void opt_init() {
 	int i;
 	char type;			// Placeholder
-	addr_t vaddr;	
+	addr_t vaddr;		// Virtual address
 	char buf[MAXLINE];	// Buffer for reading file
-	Record *root;		// Binary tree
-	FILE *tfp = stdin;
+	Record *root;		// Binary tree root
+	FILE *tfp = stdin;	// Trace file pointer
 
 	// Load tracefile
 	if(tracefile != NULL) {
@@ -100,11 +112,11 @@ void opt_init() {
 		if(buf[0] == '=') continue;
 		++traceSize;
 	}
-	rewind(tfp);
+	rewind(tfp);	// Restore file pointer
 	vPageRecord = calloc(1, traceSize * sizeof(int));
 	nextAccessTime = calloc(1, traceSize * sizeof(int));
 
-	// Parse virtual page into vPageRecord
+	// Calculate virtual page and store in vPageRecord
 	for(i = 0; i < traceSize; ++i) {
 		fgets(buf, MAXLINE, tfp);
 		if(buf[0] == '='){
@@ -124,21 +136,21 @@ void opt_init() {
 	}
 	destroy_tree(root);
 
-	// Set initial time to 0, incremented on reference
+	// Set initial time to 0, incremented on every reference
 	time = 0;
 }
 
 
-/**
- * BST helper function for constructing array nextAccessTime
- * Called upon every memory reference, combination of search and insert
- * If vPage exists, return its previous access time
- * If vPage doesn't exist, return -1
- * Update vPage's time to timeNew in both cases
+
+/* BST helper function for constructing array nextAccessTime.
+ * Combines search and insert.
+ * Called upon every memory reference.
+ * If vPage exists, return its previous access time.
+ * If vPage doesn't exist, return -1, and allocate new Record.
+ * Update vPage's time to timeNew in either case.
  */
 int update(Record *root, int vPage, int timeNew) {
 
-	assert(root);
 	// Found
 	if(root -> vPage == vPage) {
 		int timeOld = root -> time;
@@ -146,6 +158,7 @@ int update(Record *root, int vPage, int timeNew) {
 		return timeOld;
 	}
 
+	// Search left
 	else if(vPage < root -> vPage) {
 		// If null, insert new and return 1
 		if(root -> left == NULL) {
@@ -158,6 +171,7 @@ int update(Record *root, int vPage, int timeNew) {
 		else return update(root -> left, vPage, timeNew);
 	}
 
+	// Search right
 	else {
 		// If null, insert new and return 1
 		if(root -> right == NULL) {
@@ -172,6 +186,7 @@ int update(Record *root, int vPage, int timeNew) {
 
 }
 
+// Free tree memory
 void destroy_tree(Record *root) {
 	if(root == NULL) return;
 	if(root -> left) destroy_tree(root -> left);

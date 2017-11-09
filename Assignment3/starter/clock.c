@@ -20,13 +20,11 @@ int arm;	// Position of "arm"
  */
 
 int clock_evict() {
-	
 	// Arm sweep through the pages
 	while(1) {
+
 		// If arm reached end, start another round
-		if(arm >= memsize) {
-			arm = 0;
-		}
+		if(arm >= memsize) arm = 0;
 
 		// If reference bit is set, give a second chance
 		if(coremap[arm].referenced == 1) {
@@ -37,7 +35,6 @@ int clock_evict() {
 
 		++arm;
 	}
-	
 	return 0;
 }
 
@@ -46,10 +43,8 @@ int clock_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void clock_ref(pgtbl_entry_t *p) {
-
 	// Set reference bit
 	coremap[p -> frame >> PAGE_SHIFT].referenced = 1;
-
 	return;
 }
 

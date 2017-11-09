@@ -179,6 +179,7 @@ char *find_physpage(addr_t vaddr, char type) {
 		coremap[frame].new_swapin = 1;		// Mark page as new for FIFO
 		coremap[frame].referenced = 1;		// Mark page as referenced for CLOCK
 	}
+
 	// --- If p is not valid but already on swap, swap in from disk
 	else if(((p -> frame) & PG_VALID) == 0 && ((p -> frame) & PG_ONSWAP)) {
 		// --- Swap current phy page to memory
@@ -213,10 +214,12 @@ char *find_physpage(addr_t vaddr, char type) {
 		coremap[frame].new_swapin = 1;		// Mark page as new for FIFO
 		coremap[frame].referenced = 1;		// Mark page as referenced for CLOCK
 	}
+
 	// --- Page valid, increment hit count
 	else {
 		++hit_count;
 	}
+
 	// --- Update ref count everytime find_physpage is called
 	++ref_count;
 
@@ -229,14 +232,12 @@ char *find_physpage(addr_t vaddr, char type) {
 	if(type == 'S') {
 		(p -> frame) |= PG_DIRTY;
 	}
-	// Make sure page referenced
-	assert((p -> frame) & PG_REF);
 
 	// Call replacement algorithm's ref_fcn for this page
 	ref_fcn(p);
 
 	// Return pointer into (simulated) physical memory at start of frame
-	return  &physmem[(p->frame >> PAGE_SHIFT)*SIMPAGESIZE];
+	return &physmem[(p->frame >> PAGE_SHIFT)*SIMPAGESIZE];
 }
 
 void print_pagetbl(pgtbl_entry_t *pgtbl) {
