@@ -29,7 +29,7 @@ int time;				//
 /* Struct used to construct a BST to determine the next memory access 
  * for each virtual page.
  * vPage: The VPN of a virtual page
- * time: Current time of the program
+ * time: The time of subsquent access to this vPage
  */
 typedef struct _Record {
 	int vPage;
