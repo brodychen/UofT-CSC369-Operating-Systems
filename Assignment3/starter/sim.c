@@ -161,6 +161,12 @@ int main(int argc, char *argv[]) {
 	printf("Total references : %d\n", ref_count);
 	printf("Hit rate: %.4f\n", (double)hit_count/ref_count * 100);
 	printf("Miss rate: %.4f\n", (double)miss_count/ref_count *100);
-		
+	// printf("%.4f\%\t", (double)hit_count/ref_count * 100);
+	// printf("%d\t", hit_count);
+	// printf("%d\t", miss_count);
+	// printf("%d\t", evict_clean_count + evict_dirty_count);
+	// printf("%d\t", evict_clean_count);
+	// printf("%d\n", evict_dirty_count);
+	// fclose(tfp);
 	return(0);
 }

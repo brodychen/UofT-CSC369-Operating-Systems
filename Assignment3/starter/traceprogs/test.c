@@ -13,11 +13,11 @@ int main() {
 	int i;
 	Block **heap = malloc(ROUND * sizeof(Block *));
 	for(i = 0; i < ROUND; ++i) {
-		heap[i] = malloc(Block);
+		heap[i] = malloc(sizeof(Block));
 		Block a;
 	}
 	for(int i = 0; i < ROUND; ++i) {
 		free(heap[i]);
 	}
-	return;
+	return 0;
 }

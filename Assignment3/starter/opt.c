@@ -101,7 +101,7 @@ void opt_init() {
 	// Load tracefile
 	if(tracefile != NULL) {
 		if((tfp = fopen(tracefile, "r")) == NULL) {
-			perror("Error opening tracefile:");
+			perror("OPT: Error opening tracefile:");
 			exit(1);
 		}
 	}
@@ -138,6 +138,7 @@ void opt_init() {
 
 	// Set initial time to 0, incremented on every reference
 	time = 0;
+	fclose(tfp);
 }
 
 
