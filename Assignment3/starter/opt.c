@@ -10,8 +10,12 @@
 
 /* This OPT algorithm have time complxity of O(n * logn).
  * It creates an array nextAccessTime whose size if equal to number of memory accesses.
- * For pages on physical memory, its next access time is in coremap.
+ * For pages on physical memory.
+ * This information is also update in coremap::frame::nextAccessTime.
  * On every eviction, loop through coremap to find the optimal frame.
+ * The nextAccessTime array is constructed by going through the traces
+ * in reverse.
+ * Use BST while going through the trace to reduce time complexity.
  */
 
 
@@ -42,8 +46,7 @@ typedef struct _Record {
 int update(Record *root, int vPage, int timeNew);
 void destroy_tree(Record *root);
 
-/* 
- * Page to evict is chosen using the optimal (aka MIN) algorithm. 
+/* Page to evict is chosen using the optimal (aka MIN) algorithm. 
  * Returns the page frame number (which is also the index in the coremap)
  * for the page that is to be evicted.
  */
