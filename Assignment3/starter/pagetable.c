@@ -184,15 +184,9 @@ char *find_physpage(addr_t vaddr, char type) {
 	else if(((p -> frame) & PG_VALID) == 0 && ((p -> frame) & PG_ONSWAP)) {
 		// --- Swap current phy page to memory
 		int frame = evict_fcn();			// Get physical addr
-		// int frame = p -> frame >> PAGE_SHIFT;
 
-		assert(coremap[frame].in_use);		// Make sure phy page in use
-		// --- Only swap if page in dirty
 		if(((coremap[frame].pte) -> frame) & PG_DIRTY) {
 			int offset_out = swap_pageout(frame, (coremap[frame].pte) -> swap_off);
-			if(((coremap[frame].pte) -> swap_off) != -1) {
-				assert((coremap[frame].pte) -> swap_off == offset_out);
-			}
 			(coremap[frame].pte) -> swap_off = offset_out;
 
 			++evict_dirty_count;			// Dirty eviction
