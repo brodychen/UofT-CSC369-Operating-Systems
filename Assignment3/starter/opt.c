@@ -9,8 +9,8 @@
 
 
 /* This OPT algorithm have time complxity of O(n * logn).
- * It creates an array nextAccessTime whose size if equal to number of memory accesses.
- * For pages on physical memory.
+ * It creates an array nextAccessTime whose size if equal to number
+ * of memory accesses (when this virtual page get accessed next time).
  * This information is also update in coremap::frame::nextAccessTime.
  * On every eviction, loop through coremap to find the optimal frame.
  * The nextAccessTime array is constructed by going through the traces
