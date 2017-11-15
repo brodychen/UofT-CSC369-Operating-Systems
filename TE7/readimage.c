@@ -33,6 +33,8 @@ int main(int argc, char **argv) {
     // printf("Blocks per group: %d\n", sb -> s_blocks_per_group);
     // printf("Block group # of this superblock:%d\n", sb -> s_block_group_nr);
 
+    // Locate the block group table
+    // Because only 1 group in this assignment, take the first one
     struct ext2_group_desc *gt = (struct ext2_group_desc *)(disk + 2048);
     printf("Block group:\n");
     printf("\tblock bitmap: %d\n", gt[0].bg_block_bitmap);
