@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <assert>
 #include "ext2.h"
 
 unsigned char *disk;
@@ -83,7 +84,19 @@ int main(int argc, char **argv) {
 // Print the idx inode from inode table, idx starts from 1
 void print_inode(struct ext2_inode *inode_table, unsigned int idx) {
     struct ext2_inode *p = inode_table + idx - 1;
-    printf("[%d] type: %d size: %d links: %d blocks: %d\n", 
-        idx, p -> i_mode, p -> i_size, p -> i_links_count, p -> i_blocks);
+
+    // Determine file type
+    char type;
+    if(p -> i_mode & EXT2_S_IFLNK) {    // Symbolic link
+
+    } else if(p -> i_mode & EXT2_S_IFREG) { // Regular file
+
+    } else if(p -> i_mode & EXT2_S_IFDIR) { // Directory
+
+    } else {
+        assert(0);
+    }
+    printf("[%d] type: %c size: %d links: %d blocks: %d\n", 
+        idx, type, p -> i_size, p -> i_links_count, p -> i_blocks);
     printf("[%d] Blocks:  %d\n", idx, p -> i_blocks);
 }
