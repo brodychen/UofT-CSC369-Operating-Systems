@@ -91,12 +91,17 @@ void print_inode(struct ext2_inode *inode_table, unsigned int idx) {
         type = 'd';
     } else if(p -> i_mode & EXT2_S_IFREG) { // Regular file
         type = 'f';
-    } else if(p -> i_mode & EXT2_S_IFLNK) { // Symbolic link
-        type = 'l';
     } else {
+        type = '0';
         assert(0);
     }
     printf("[%d] type: %c size: %d links: %d blocks: %d\n", 
         idx, type, p -> i_size, p -> i_links_count, p -> i_blocks);
-    printf("[%d] Blocks:  %d\n", idx, p -> i_blocks);
+
+    // Print the blocks except the reserved blocks
+    printf("[%d] Blocks: ", idx, p -> i_blocks);
+    int i;
+    for(i = 0; i < 15; ++i) {
+        if((p -> i_block)[i] > 11)
+    }
 }
