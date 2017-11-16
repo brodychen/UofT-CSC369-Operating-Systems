@@ -10,7 +10,9 @@
 
 unsigned char *disk;
 
+// Forward declarations
 void print_inode(struct ext2_inode *inode_table, unsigned int idx);
+void print_directory_inode(char *disk, struct ext2_inode *inode_table, unsigned int idx);
 
 int main(int argc, char **argv) {
 
@@ -82,7 +84,22 @@ int main(int argc, char **argv) {
 
     // Print directory blocks
     printf("\nDirectory Blocks:\n");
+    // Traverse inode bitmap, find directory inodes
+    inode_bit = (char *)disk + gt[0].bg_inode_bitmap * 0x400;
+    inode_idx = 1;
+    for(; inode_bit < (char *)disk + gt[0].bg_inode_bitmap * 0x400 + ((sb -> s_inodes_count) >> 3); ++inode_bit) {
+        for(i = 1; i <= 0x80; i <<= 1) {
+            // If this inode is set in bitmap and is directory, print
+            if(((*inode_bit) & i) && 
+            ((struct ext2_inode *)((char *)disk + gt[0].bg_inode_table * 0x400) + inode_idx - 1) -> i_mode & EXT2_S_IFDIR) {
+                print_directory_inode((char *)disk, 
+                    (struct ext2_inode *)((char *)disk + gt[0].bg_inode_table * 0x400),
+                    inode_idx);
+            }
 
+            ++inode_idx;
+        }
+    }
     
     return 0;
 }
@@ -104,7 +121,7 @@ void print_inode(struct ext2_inode *inode_table, unsigned int idx) {
     printf("[%d] type: %c size: %d links: %d blocks: %d\n", 
         idx, type, p -> i_size, p -> i_links_count, p -> i_blocks);
 
-    // Print the blocks except the reserved blocks
+    // Print the blocks
     printf("[%d] Blocks: ", idx);
     int i;
     for(i = 0; i < 15; ++i) {
@@ -115,3 +132,48 @@ void print_inode(struct ext2_inode *inode_table, unsigned int idx) {
     printf("\n");
 }
 
+/**
+ * Print the content of this directory inode.
+ * Traverse through all data blocks of this inode.
+ * Break if encounter empty block.
+ */
+void print_directory_inode(char *disk, struct ext2_inode *inode_table, unsigned int idx) {
+    struct ext2_inode *p = inode_table + idx - 1;   // Pointer to this inode
+
+    int i;
+    for(i = 0; i < 15; ++i) {
+        // Value 0 suggests no further block defined, break
+        if((p -> i_block)[i] == 0) break;
+
+        printf("   DIR BLOCK NUM: %d (for inode %d)\n", (p -> i_block)[i], idx);
+        // Traverse current block
+        char *block = disk + ((p -> i_block)[i]) * 0x400;   // Pointer to start of block
+        char *p = block;    // Pointer to traverse the block
+        while(1) {
+            printf("Inode: %d", ((struct ext2_dir_entry *)p) -> inode);
+            printf(" rec_len: %d", ((struct ext2_dir_entry *)p) -> rec_len);
+            printf(" name_len: %d", ((struct ext2_dir_entry *)p) -> name_len);
+
+            // Check the type of the file
+            char type;
+            if((((struct ext2_dir_entry *)p) -> file_type) & EXT2_FT_DIR) {
+                type = 'd';
+            } else if ((((struct ext2_dir_entry *)p) -> file_type) & EXT2_FT_REG_FILE) {
+                type = 'f';
+            } else {
+                type = '0';
+                assert(0);
+            }
+            printf(" type= %c", type);
+            printf(" name=%.*s\n", 
+                ((struct ext2_dir_entry *)p) -> name_len,
+                ((struct ext2_dir_entry *)p) -> name);
+            
+            // Move pointer to position of next struct ext2_dir_entry
+            p += ((struct ext2_dir_entry *)p) -> rec_len;
+            
+            // If p is at end of block
+            if(p >= block + 0x400) break;
+        }
+    }
+}
