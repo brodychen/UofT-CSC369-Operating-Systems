@@ -9,6 +9,7 @@
 
 unsigned char *disk;
 
+void print_inode(struct ext2_inode *inode_table, unsigned int idx);
 
 int main(int argc, char **argv) {
 
@@ -27,12 +28,7 @@ int main(int argc, char **argv) {
     struct ext2_super_block *sb = (struct ext2_super_block *)(disk + 1024);
     printf("Inodes: %d\n", sb->s_inodes_count);
     printf("Blocks: %d\n", sb->s_blocks_count);
-    // printf("Superblock size: %d\n", sizeof(struct ext2_super_block));
-    // printf("Inode size: %d\n", sizeof(struct ext2_inode));
-    // printf("First data block: %d\n", sb -> s_first_data_block);
-    // printf("Blocks per group: %d\n", sb -> s_blocks_per_group);
-    // printf("Block group # of this superblock:%d\n", sb -> s_block_group_nr);
-
+    
     // Locate the block group table
     // Because only 1 group in this assignment, take the first one
     struct ext2_group_desc *gt = (struct ext2_group_desc *)(disk + 2048);
@@ -44,6 +40,50 @@ int main(int argc, char **argv) {
     printf("    free inodes: %d\n", gt[0].bg_free_inodes_count);
     printf("    used_dirs: %d\n", gt[0].bg_used_dirs_count);
 
+    // Print block bitmap
+    unsigned int i;
+    printf("Block bitmap: ");
+    char *block_bit = (char *)disk + gt[0].bg_block_bitmap * 0x400;
+    for(; block_bit < (char *)disk + gt[0].bg_block_bitmap * 0x400 + ((sb -> s_blocks_count) >> 3); ++block_bit) {
+        for(i = 1; i <= 0x80; i <<= 1) {
+            printf("%d", ((*block_bit) & i) > 0);
+        }
+        printf(" ");
+    }
+    printf("\n");
+
+    // Print inode bitmap
+    printf("Inode bitmap: ");
+    char *inode_bit = (char *)disk + gt[0].bg_inode_bitmap * 0x400;
+    for(; inode_bit < (char *)disk + gt[0].bg_inode_bitmap * 0x400 + ((sb -> s_inodes_count) >> 3); ++inode_bit) {
+        for(i = 1; i <= 0x80; i <<= 1) {
+            printf("%d", ((*inode_bit) & i) > 0);
+        }
+        printf(" ");
+    }
+    printf("\n");
+
+    // Print inodes
+    printf("\nInodes:\n");
+    print_inode((struct ext2_inode *)((char *)disk + gt[0].bg_inode_table * 0x400), 2);
+    inode_bit = (char *)disk + gt[0].bg_inode_bitmap * 0x400;
+    unsigned int inode_idx = 1;
+    for(; inode_bit < (char *)disk + gt[0].bg_inode_bitmap * 0x400 + ((sb -> s_inodes_count) >> 3); ++inode_bit) {
+        for(i = 1; i <= 0x80; i <<= 1) {
+            if(((*inode_bit) & i) && inode_idx >= 12) {  // Print only if this inode is valid
+                print_inode((struct ext2_inode *)((char *)disk + gt[0].bg_inode_table * 0x400), inode_idx);
+            }
+            ++inode_idx;
+        }
+    }
     
     return 0;
+}
+
+// Print the idx inode from inode table, idx starts from 1
+void print_inode(struct ext2_inode *inode_table, unsigned int idx) {
+    struct ext2_inode *p = inode_table + idx - 1;
+    printf("[%d] type: %c size: %d links: %d blocks: %d\n", 
+        idx, p -> i_mode, p -> i_size, p -> i_links_count, p -> i_blocks);
+    printf("[%d] Blocks:  %d\n", idx, p -> i_blocks);
 }
