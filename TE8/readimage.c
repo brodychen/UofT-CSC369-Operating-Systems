@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <assert>
+#include <assert.h>
 #include "ext2.h"
 
 unsigned char *disk;
@@ -87,12 +87,12 @@ void print_inode(struct ext2_inode *inode_table, unsigned int idx) {
 
     // Determine file type
     char type;
-    if(p -> i_mode & EXT2_S_IFLNK) {    // Symbolic link
-
+    if(p -> i_mode & EXT2_S_IFDIR) {    // Directory
+        type = 'd';
     } else if(p -> i_mode & EXT2_S_IFREG) { // Regular file
-
-    } else if(p -> i_mode & EXT2_S_IFDIR) { // Directory
-
+        type = 'f';
+    } else if(p -> i_mode & EXT2_S_IFLNK) { // Symbolic link
+        type = 'l';
     } else {
         assert(0);
     }
