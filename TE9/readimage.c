@@ -140,8 +140,12 @@ void print_inode(struct ext2_inode *inode_table, unsigned int idx) {
 void print_directory_inode(char *disk, struct ext2_inode *inode_table, unsigned int idx) {
     struct ext2_inode *p = inode_table + idx - 1;   // Pointer to this inode
 
+    // If reserved inode (but not the root directory inode), do not print
+    if(idx <= 11 && idx != 2) return;
+
     int i;
     for(i = 0; i < 15; ++i) {
+
         // Value 0 suggests no further block defined, break
         if((p -> i_block)[i] == 0) break;
 
@@ -162,7 +166,7 @@ void print_directory_inode(char *disk, struct ext2_inode *inode_table, unsigned 
                 type = 'f';
             } else {
                 type = '0';
-                assert(0);
+                // assert(0);
             }
             printf(" type= %c", type);
             printf(" name=%.*s\n", 
