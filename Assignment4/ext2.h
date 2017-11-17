@@ -209,7 +209,165 @@ struct ext2_dir_entry {
 /* #define EXT2_FT_BLKDEV   4 */ /* Block Device */
 /* #define EXT2_FT_FIFO     5 */ /* Buffer File */
 /* #define EXT2_FT_SOCK     6 */ /* Socket File */
-
 #define    EXT2_FT_MAX      8
+
+
+
+/********** New definitions **********/
+
+unsigned char *disk;			// Global pointer to mmap the disk to
+struct ext2_super_block *sb;	// Pointer to super block
+struct ext2_group_desc *gt;		// Pointer to group table
+struct ext2_inode *ind_tbl;		// Pointer to inode table
+char *blk_bmp;					// Pointer to block bitmap
+char *ind_bmp;					// Pointer to inode bitmap
+
+/**
+ * Function for changing directory.
+ * Assign inode of destination to result.
+ * Arg1: 	Absolute path
+ * Return: 	Success: 					0
+ * 			Path not exist: 			ENOENT
+ *			Directory already exists: 	EEXIST
+ */			
+int cd(char *dir, struct ext2_inode *result) {
+	// Set current working directory to root
+	struct ext2_inode *cwd = ind_tbl + (EXT2_ROOT_INO - 1);
+
+	// Recursively search subdirectories
+	char *cursor = dir;
+	while(1) {
+
+		// Get the length of next 'subdirectory'
+		int len = 0;
+		while((cursor + len - dir) < strlen(dir) && cursor[len] != '/') ++len;
+
+		// If last directory (possible trailing slashes)
+		if((cursor + len - dir) >= strlen(dir) - 1) {
+
+		}
+
+		// Not last directory, search recursively in subdirectories
+		else {
+			
+		}
+		
+	}
+}
+
+
+/**
+ * Find file/directory in given directory's inode
+ * Arg1:	Filename
+ * Arg2:	Filename length (without '\0')
+ * Arg3:	Inode of directory to search
+ * Return:	Success:	0
+ *			Fail: 		ENOENT
+ */
+int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
+
+	// Traverse current inode's i_block to find subdirectory
+	int i, j, k, rv = 0;
+
+	for(i = 0; i < 12; ++i) {	// Direct blocks
+		
+		// Value 0 suggests no further block defined, i.e. not found
+		if((dir -> i_block)[i] == 0) {
+			return ENOENT;
+		}
+
+		rv = search_in_dir_block(filename, fnamelen, (dir -> i_block)[i]);
+		if(rv) return rv;	// Found in direct block
+	}
+
+	if(rv == 0) {	// If not found, search in indirect blocks (*256)
+		int *indirect_block = (int *)(disk + (dir -> i_block)[12] * EXT2_BLOCK_SIZE);
+		for(i = 0; i < 256; ++i) {
+			
+			// Value 0 suggests no further block defined, i.e. not found
+			if(indirect_block[i] == 0) {
+				return ENOENT;
+			}
+
+			rv = search_in_dir_block(cursor, len, indirect_block[i]);
+			if(rv) return rv;	// Found in indirect block
+		}
+	}
+
+	if(rv == 0) {	// If not found in indirect block, search in double indirect block
+		int *indirect_block = (int *)(disk + (dir -> i_block)[13] * EXT2_BLOCK_SIZE);
+
+		for(i = 0; i < 256; ++i) {
+			int *db_indirect_block = (int *)(disk + indirect_block[i] * EXT2_BLOCK_SIZE);
+			
+			for(j = 0; j < 256; ++j) {
+
+				// Value 0 suggests no further block defined, i.e. not found
+				if(db_indirect_block[j] == 0) {
+					return ENOENT;
+				}
+
+				rv = search_in_dir_block(cursor, len, db_indirect_block[i]);
+				if(rv) return rv;	// Found in double indirect block
+			}
+		}
+	}
+
+	if(rv == 0) {	// If not found in double indirect block, search in triple indirect block
+		int *indirect_block = (int *)(disk + (pwd -> i_block)[14] * EXT2_BLOCK_SIZE);
+
+		for(i = 0; i < 256; ++i) {
+			int *db_indirect_block = (int *)(disk + indirect_block[i] * EXT2_BLOCK_SIZE);
+
+			for(j = 0; j < 256; ++j) {
+				int *tp_indirect_block = (int *)(disk + db_indirect_block[j] * EXT2_BLOCK_SIZE);
+
+				for(k = 0; k < 256; ++k) {
+
+					// Value 0 suggests no further block defined, i.e. not found
+					if(tp_indirect_block[k] == 0) {
+						return ENOENT;
+					}		
+					
+					rv = search_in_dir_block(cursor, len, tp_indirect_block[i]);
+					if(rv) return rv;	// Found in triple indirect block
+				}
+			}
+		}
+	}
+
+	// Not found in all 16843020 blocks (which is unlikely :) lol)
+	return ENOENT;
+}
+
+
+/**
+ * Search for a file/dir in a data block.
+ * Arg1: 	Filename (char buffer array)
+ * Arg2:	Length of filename (without '\0')
+ * Arg3:	Block number (begins from 1)
+ * Return: 	Success: inode number (>0)
+ * 			Fail: 0
+ */
+int search_in_dir_block(char *filename, int fnamelen, int block) {
+
+	char *block_p = disk + (block - 1) * EXT2_BLOCK_SIZE;	// Start of block
+	char *cur = block;										// Search pos
+
+	while(1) {
+	
+		// Filename lengths supposed to be equal
+		assert(((struct ext2_dir_entry *)(p)) -> name_len == fnamelen);
+
+		// Found
+		if(strncmp(((struct ext2_dir_entry *)(p)) -> name, filename, fnamelen) == 0) {
+			return ((struct ext2_dir_entry *)(p)) -> inode;
+		}
+
+		// Not found if p reach end of block
+		p += ((struct ext2_dir_entry *)p) -> rec_len;
+		if(p >= block_p + EXT2_BLOCK_SIZE) return 0;
+	}
+}
 
 #endif

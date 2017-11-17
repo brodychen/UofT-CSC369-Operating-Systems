@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <assert.h>
+#include <string.h>
 
 #include "ext2.h"
 
@@ -21,9 +22,45 @@
  * 			Directory already exists: 	EEXIST
  */
 
+ extern unsigned char *disk;			// Global pointer to mmap the disk to
+ 
+ extern struct ext2_super_block *sb;	// Pointer to super block
+ extern struct ext2_group_desc *gt;		// Pointer to group table
+ extern struct ext2_inode *ind_tbl;		// Pointer to inode table
+ extern char *blk_bmp;					// Pointer to block bitmap
+ extern char *ind_bmp;					// Pointer to inode bitmap
 
-int main() {
+
+int main(int argc, char **argv) {
+
+	if(argc != 3) {
+		fprintf(stderr, "Usage: %s <image file name> <directory path>\n", argv[0]);
+		exit(1);
+	}
+	int fd = open(argv[1], O_RDWR);		// Allow r & w
+
+	// Map disk to memory, allow r & w
+	// Share this mapping between processes
+	disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if(disk == MAP_FAILED) {
+		perror("mmap");
+		exit(1);
+	}
+
+	// Pointer to super block (number 2)
+	sb = (struct ext2_super_block *)(disk + EXT2_BLOCK_SIZE);
+	// Pointer to group table (number 3). Only 1 group in assignment, so take first one
+	gt = (struct ext2_group_desc *)(disk + EXT2_BLOCK_SIZE * 2);
+	// Pointer to inode table (number 6+)
+	ind_tbl = (struct ext2_inode *)(disk + EXT2_BLOCK_SIZE * gt[0].bg_inode_table);
+	// Pointer to block bitmap (number 4)
+	blk_bmp = disk + EXT2_BLOCK_SIZE * gt[0].bg_block_bitmap;
+	// Pointer to inode bitmap (number 5)
+	ind_bmp = disk + EXT2_BLOCK_SIZE * gt[0].bg_inode_bitmap;
+
+	int rv = cd(argv[2], NULL);
+
 
 	
-	
+	return 0;
 }

@@ -1,6 +1,6 @@
 TARGET = ext2_mkdir
 DEPS = ext2.h
-CFLAGS = # -g
+CFLAGS =  -g
 
 all: ${TARGET}
 
