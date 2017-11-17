@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 	// Cd to directory where new dir will be created
 	// Partition new dir and sub-directories
 	int i = strlen(argv[2]) - 1;
-	if(argv[2][i] == '/') argv[i--] = '\0';		// Eliminate trailing slashes
+	if(argv[2][i] == '/') argv[2][i--] = '\0';		// Eliminate trailing slashes
 	while(i >= 0) {								// Move i to last '/'
 		if(argv[2][i] != '/') --i;
 	}
@@ -128,6 +128,8 @@ int main(int argc, char **argv) {
 	// Setup padding ent
 	struct ext2_dir_entry *pad_ent = (struct ext2_dir_entry *)((char *)(new_inode_p -> i_block) + 24);
 	pad_ent -> rec_len = EXT2_BLOCK_SIZE - 24;
+
+	
 	
 	return 0;
 }

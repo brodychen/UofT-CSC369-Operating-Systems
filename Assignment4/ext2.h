@@ -428,12 +428,15 @@ unsigned short get_inode_mode(int inode_idx) {
 int allocate_inode() {
 	int i;
 	for(i = 11; i < sb -> s_inodes_count; ++i) {	// Skip reserved inodes
-		if(ind_bmp[i >> 3] & (1 << (i % 8)) == 0) {
+		if((ind_bmp[i >> 3] & (1 << (i % 8))) == 0) {
 			ind_bmp[i >> 3] &= (1 << (i % 8));
 			memset(ind_tbl + i, 0, sizeof(struct ext2_inode));
 			return i + 1;
 		}
 	}
+
+	// TODO: Update block group desc table & super block
+
 	return 0;
 }
 
@@ -446,12 +449,15 @@ int allocate_inode() {
 int allocate_block() {
 	int i;
 	for(i = 8; i < sb -> s_blocks_count; ++i) {		// Skip inode table stuff
-		if(blk_bmp[i >> 3] & (1 << (i % 8)) == 0) {
+		if((blk_bmp[i >> 3] & (1 << (i % 8))) == 0) {
 			blk_bmp[i >> 3] &= (1 << (i % 8));
 			memset(disk + i, 0, EXT2_BLOCK_SIZE);
 			return i + 1;
 		}
 	}
+
+	// TODO: Update block group desc table & super block
+
 	return 0;
 }
 #endif
