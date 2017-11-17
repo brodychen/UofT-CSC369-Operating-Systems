@@ -8,3 +8,5 @@ ext2_restore_bonus
 ext2_checker
 
 .*.swp
+
+*.plist
