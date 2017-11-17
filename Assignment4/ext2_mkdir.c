@@ -80,13 +80,54 @@ int main(int argc, char **argv) {
 
 	// Check if same directory (but not types) already exists within parent directory
 	++i;
-	int possible_dup_dir = search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
-	if(possible_dup_dir > 0 && (get_inode_mode(possible_dup_dir) & EXT2_S_IFDIR)) {
+	struct ext2_dir_entry *possible_dup_dir_ent 
+		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
+	if(possible_dup_dir_ent && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR)) {
 		return EEXIST;
 	}
 
-	//
-	
+	// Determine the length of new directory entry
+	int new_ent_name_len = strlen(argv[2]) - i;
+	int new_ent_rec_len = 8 + strlen(argv[2]) - i;
+	// Pad new directory entry length to align with 4
+	new_ent_rec_len += 3; new_ent_rec_len >>= 2; new_ent_rec_len <<= 2;
+
+	// Find the next block in memory for new directory
+	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode);
+
+	// In not last one in data block, maintain last entry (padding)
+	if(new_ent -> rec_len != new_ent_rec_len) {	// Not last dir in this block
+		struct ext2_dir_entry *new_ent_next = (struct ext2_dir_entry *)((char *)new_ent + new_ent_rec_len);
+		new_ent_next -> inode = 0;
+		new_ent_next -> rec_len = new_ent -> rec_len - new_ent_rec_len;
+		new_ent_next -> name_len = 0;
+		new_ent_next -> file_type = EXT2_FT_UNKNOWN;
+	}
+
+	// Find a empty inode for this directory
+	int new_inode = allocate_inode();
+	struct ext2_inode *new_inode_p = ind_tbl + new_inode - 1;
+	new_inode_p -> i_mode = EXT2_S_IFDIR;	// Set new inode mode to directory
+
+	// Allocate a new block for this directory's inode
+	(new_inode_p -> i_block)[0] = allocate_block();
+	// Setup self ent
+	struct ext2_dir_entry *self_ent = (struct ext2_dir_entry *)(new_inode_p -> i_block);
+	self_ent -> inode = new_inode;
+	self_ent -> rec_len = 12;
+	self_ent -> name_len = 1;
+	self_ent -> file_type = EXT2_FT_DIR;
+	memset(self_ent -> name, '.', 1);
+	// Setup parent ent
+	struct ext2_dir_entry *parent_ent = (struct ext2_dir_entry *)((char *)(new_inode_p -> i_block) + 12);
+	parent_ent -> inode = parent_dir_inode;
+	parent_ent -> rec_len = 12;
+	parent_ent -> name_len = 2;
+	parent_ent -> file_type = EXT2_FT_DIR;
+	memset(parent_ent -> name, '.', 2);
+	// Setup padding ent
+	struct ext2_dir_entry *pad_ent = (struct ext2_dir_entry *)((char *)(new_inode_p -> i_block) + 24);
+	pad_ent -> rec_len = EXT2_BLOCK_SIZE - 24;
 	
 	return 0;
 }

@@ -225,8 +225,8 @@ char *blk_bmp;					// Pointer to block bitmap
 char *ind_bmp;					// Pointer to inode bitmap
 
 // Forward declarations
-int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir);
-int search_in_dir_block(char *filename, int fnamelen, int block);
+struct ext2_dir_entry *search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir);
+struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int block);
 
 /**
  * Function for changing directory.
@@ -254,23 +254,23 @@ int cd(char *dir, int dirlen) {
 
 		// If last directory (possible trailing slashes)
 		if((cursor - dir + len) >= dirlen - 1) {
-			int sub_dir_inode = search_in_dir_inode(cursor, len, cwd);
+			struct ext2_dir_entry *sub_dir_entry = search_in_dir_inode(cursor, len, cwd);
 
 			// Subdirectory not found
-			if(sub_dir_inode == 0) return -ENOENT;
+			if(sub_dir_entry == NULL) return -ENOENT;
 
-			return sub_dir_inode;
+			return sub_dir_entry -> inode;
 		}
 
 		// Not last directory, search recursively in subdirectories
 		else {
-			int sub_dir_inode = search_in_dir_inode(cursor, len, cwd);
+			struct ext2_dir_entry *sub_dir_entry = search_in_dir_inode(cursor, len, cwd);
 
 			// Subdirectory not found
-			if(sub_dir_inode == 0) return -ENOENT;
+			if(sub_dir_entry == NULL) return -ENOENT;
 
 			// Update cwd pointing to inode of subdirectory
-			cwd = ind_tbl + sub_dir_inode;
+			cwd = ind_tbl + (sub_dir_entry -> inode);
 			// Update cursor to position of next subdirectory
 			cursor += ++len;
 		}
@@ -282,21 +282,24 @@ int cd(char *dir, int dirlen) {
 /**
  * Find file/directory in given directory's inode
  * Arg1:	Filename
+ *			If NULL: search for empty slot
  * Arg2:	Filename length (without '\0')
+			If arg1 NULL: min size for empty slot	
  * Arg3:	Inode of directory to search
- * Return:	Success:	inode index (>0)
- *			Fail: 		-ENOENT
+ * Return:	Success:	corresponding struct ext2_dir_entry *
+ *			Fail: 		NULL
  */
-int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
+ struct ext2_dir_entry *search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 
 	// Traverse current inode's i_block to find subdirectory
-	int i, j, k, rv = 0;
+	int i, j, k;
+	struct ext2_dir_entry *rv = 0;
 
 	for(i = 0; i < 12; ++i) {	// Direct blocks
 		
 		// Value 0 suggests no further block defined, i.e. not found
 		if((dir -> i_block)[i] == 0) {
-			return -ENOENT;
+			return NULL;
 		}
 
 		rv = search_in_dir_block(filename, fnamelen, (dir -> i_block)[i]);
@@ -309,7 +312,7 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 			
 			// Value 0 suggests no further block defined, i.e. not found
 			if(indirect_block[i] == 0) {
-				return -ENOENT;
+				return NULL;
 			}
 
 			rv = search_in_dir_block(filename, fnamelen, indirect_block[i]);
@@ -327,7 +330,7 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 
 				// Value 0 suggests no further block defined, i.e. not found
 				if(db_indirect_block[j] == 0) {
-					return -ENOENT;
+					return NULL;
 				}
 
 				rv = search_in_dir_block(filename, fnamelen, db_indirect_block[i]);
@@ -349,7 +352,7 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 
 					// Value 0 suggests no further block defined, i.e. not found
 					if(tp_indirect_block[k] == 0) {
-						return -ENOENT;
+						return NULL;
 					}		
 					
 					rv = search_in_dir_block(filename, fnamelen, tp_indirect_block[i]);
@@ -360,37 +363,49 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 	}
 
 	// Not found in all 16843020 blocks (which is unlikely :) lol)
-	return -ENOENT;
+	return NULL;
 }
 
 
 /**
- * Search for a file/dir in a data block.
+ * Search for a file/dir or slot in a data block.
  * Arg1: 	Filename (char buffer array)
+			If NULL: search for next empty slot
  * Arg2:	Length of filename (without '\0')
+			If Arg1 NULL: min size for empty slot
  * Arg3:	Block number (begins from 1)
- * Return: 	Success: inode number (>0)
- * 			Fail: 0
+ * Return: 	Success: corresponding ext2_dir_entry *
+ * 			Fail: NULL
  */
-int search_in_dir_block(char *filename, int fnamelen, int block) {
+struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int block) {
 
 	char *block_p = disk + (block - 1) * EXT2_BLOCK_SIZE;	// Start of block
 	char *cur = block_p;										// Search pos
 
 	while(1) {
 
-		// Found if name and namelength are both equal
-		if(fnamelen == ((struct ext2_dir_entry *)(cur)) -> name_len && 
-			strncmp(((struct ext2_dir_entry *)(cur)) -> name, filename, fnamelen) == 0) {
-			return ((struct ext2_dir_entry *)(cur)) -> inode;
+		if(filename == NULL) {	// Search for empty slot with enough size
+			if(((struct ext2_dir_entry *)(cur)) -> inode == 0 && 
+			((struct ext2_dir_entry *)(cur)) -> rec_len >= fnamelen) {
+				return (struct ext2_dir_entry *)(cur);
+			}
+		}
+
+		else{	// Search for file/dir
+			// Found if name and namelength are both equal
+			if(fnamelen == ((struct ext2_dir_entry *)(cur)) -> name_len && 
+				strncmp(((struct ext2_dir_entry *)(cur)) -> name, filename, fnamelen) == 0) {
+				return (struct ext2_dir_entry *)cur;
+			}
 		}
 
 		// Update cur to position of next file in this block
 		cur += ((struct ext2_dir_entry *)cur) -> rec_len;
 		// Not found if p reach end of block
-		if(cur >= block_p + EXT2_BLOCK_SIZE) return 0;
+		if(cur >= block_p + EXT2_BLOCK_SIZE) return NULL;
 	}
 }
+
 
 /**
  * Returns type(short) field given an inode index
@@ -400,8 +415,43 @@ unsigned short get_inode_mode(int inode_idx) {
 	// Make sure inode index in range
 	assert(inode_idx <= sb -> s_inodes_count);
 	
-	return (ind_tbl + inode_idx) -> i_mode;
+	return (ind_tbl + inode_idx - 1) -> i_mode;
 	
 }
 
+/**
+ * Allocate a new block of inode with smallest index
+ * Set all variables in new inode to zero
+ * Return:		Success:	Index of new inode (>0)
+ * 				Fail: 		0
+ */
+int allocate_inode() {
+	int i;
+	for(i = 11; i < sb -> s_inodes_count; ++i) {	// Skip reserved inodes
+		if(ind_bmp[i >> 3] & (1 << (i % 8)) == 0) {
+			ind_bmp[i >> 3] &= (1 << (i % 8));
+			memset(ind_tbl + i, 0, sizeof(struct ext2_inode));
+			return i + 1;
+		}
+	}
+	return 0;
+}
+
+/**
+ * Allocate a new block of data with smallest index
+ * Set all variables in new inode to zero
+ * Return:		Success:	Index of new inode (>0)
+ * 				Fail: 		0
+ */
+int allocate_block() {
+	int i;
+	for(i = 8; i < sb -> s_blocks_count; ++i) {		// Skip inode table stuff
+		if(blk_bmp[i >> 3] & (1 << (i % 8)) == 0) {
+			blk_bmp[i >> 3] &= (1 << (i % 8));
+			memset(disk + i, 0, EXT2_BLOCK_SIZE);
+			return i + 1;
+		}
+	}
+	return 0;
+}
 #endif
