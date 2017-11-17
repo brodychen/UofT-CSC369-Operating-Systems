@@ -18,6 +18,8 @@
 #ifndef CSC369_EXT2_FS_H
 #define CSC369_EXT2_FS_H
 
+#include <errno.h>
+
 /* The ext2 block size used in the assignment. */
 #define EXT2_BLOCK_SIZE 1024
 
@@ -222,34 +224,55 @@ struct ext2_inode *ind_tbl;		// Pointer to inode table
 char *blk_bmp;					// Pointer to block bitmap
 char *ind_bmp;					// Pointer to inode bitmap
 
+// Forward declarations
+int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir);
+int search_in_dir_block(char *filename, int fnamelen, int block);
+
 /**
  * Function for changing directory.
  * Assign inode of destination to result.
  * Arg1: 	Absolute path
- * Return: 	Success: 					0
- * 			Path not exist: 			ENOENT
- *			Directory already exists: 	EEXIST
+ * Arg2:	Length of directory
+ * Return: 	Success: 					inode number of directory
+ * 			Path not exist: 			-ENOENT
  */			
-int cd(char *dir, struct ext2_inode *result) {
+int cd(char *dir, int dirlen) {
 	// Set current working directory to root
 	struct ext2_inode *cwd = ind_tbl + (EXT2_ROOT_INO - 1);
 
 	// Recursively search subdirectories
 	char *cursor = dir;
+	int len;
 	while(1) {
 
+		// Make sure currently working on a directory
+		assert(cwd -> i_mode & EXT2_S_IFDIR);
+
 		// Get the length of next 'subdirectory'
-		int len = 0;
-		while((cursor + len - dir) < strlen(dir) && cursor[len] != '/') ++len;
+		len = 0;
+		while((cursor + len - dir) < dirlen && cursor[len] != '/') ++len;
 
 		// If last directory (possible trailing slashes)
-		if((cursor + len - dir) >= strlen(dir) - 1) {
+		if((cursor - dir + len) >= dirlen - 1) {
+			int sub_dir_inode = search_in_dir_inode(cursor, len, cwd);
 
+			// Subdirectory not found
+			if(sub_dir_inode == 0) return -ENOENT;
+
+			return sub_dir_inode;
 		}
 
 		// Not last directory, search recursively in subdirectories
 		else {
-			
+			int sub_dir_inode = search_in_dir_inode(cursor, len, cwd);
+
+			// Subdirectory not found
+			if(sub_dir_inode == 0) return -ENOENT;
+
+			// Update cwd pointing to inode of subdirectory
+			cwd = ind_tbl + sub_dir_inode;
+			// Update cursor to position of next subdirectory
+			cursor += ++len;
 		}
 		
 	}
@@ -261,8 +284,8 @@ int cd(char *dir, struct ext2_inode *result) {
  * Arg1:	Filename
  * Arg2:	Filename length (without '\0')
  * Arg3:	Inode of directory to search
- * Return:	Success:	0
- *			Fail: 		ENOENT
+ * Return:	Success:	inode index (>0)
+ *			Fail: 		-ENOENT
  */
 int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 
@@ -273,7 +296,7 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 		
 		// Value 0 suggests no further block defined, i.e. not found
 		if((dir -> i_block)[i] == 0) {
-			return ENOENT;
+			return -ENOENT;
 		}
 
 		rv = search_in_dir_block(filename, fnamelen, (dir -> i_block)[i]);
@@ -286,10 +309,10 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 			
 			// Value 0 suggests no further block defined, i.e. not found
 			if(indirect_block[i] == 0) {
-				return ENOENT;
+				return -ENOENT;
 			}
 
-			rv = search_in_dir_block(cursor, len, indirect_block[i]);
+			rv = search_in_dir_block(filename, fnamelen, indirect_block[i]);
 			if(rv) return rv;	// Found in indirect block
 		}
 	}
@@ -304,17 +327,17 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 
 				// Value 0 suggests no further block defined, i.e. not found
 				if(db_indirect_block[j] == 0) {
-					return ENOENT;
+					return -ENOENT;
 				}
 
-				rv = search_in_dir_block(cursor, len, db_indirect_block[i]);
+				rv = search_in_dir_block(filename, fnamelen, db_indirect_block[i]);
 				if(rv) return rv;	// Found in double indirect block
 			}
 		}
 	}
 
 	if(rv == 0) {	// If not found in double indirect block, search in triple indirect block
-		int *indirect_block = (int *)(disk + (pwd -> i_block)[14] * EXT2_BLOCK_SIZE);
+		int *indirect_block = (int *)(disk + (dir -> i_block)[14] * EXT2_BLOCK_SIZE);
 
 		for(i = 0; i < 256; ++i) {
 			int *db_indirect_block = (int *)(disk + indirect_block[i] * EXT2_BLOCK_SIZE);
@@ -326,10 +349,10 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 
 					// Value 0 suggests no further block defined, i.e. not found
 					if(tp_indirect_block[k] == 0) {
-						return ENOENT;
+						return -ENOENT;
 					}		
 					
-					rv = search_in_dir_block(cursor, len, tp_indirect_block[i]);
+					rv = search_in_dir_block(filename, fnamelen, tp_indirect_block[i]);
 					if(rv) return rv;	// Found in triple indirect block
 				}
 			}
@@ -337,7 +360,7 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 	}
 
 	// Not found in all 16843020 blocks (which is unlikely :) lol)
-	return ENOENT;
+	return -ENOENT;
 }
 
 
@@ -352,22 +375,33 @@ int search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir) {
 int search_in_dir_block(char *filename, int fnamelen, int block) {
 
 	char *block_p = disk + (block - 1) * EXT2_BLOCK_SIZE;	// Start of block
-	char *cur = block;										// Search pos
+	char *cur = block_p;										// Search pos
 
 	while(1) {
-	
-		// Filename lengths supposed to be equal
-		assert(((struct ext2_dir_entry *)(p)) -> name_len == fnamelen);
 
-		// Found
-		if(strncmp(((struct ext2_dir_entry *)(p)) -> name, filename, fnamelen) == 0) {
-			return ((struct ext2_dir_entry *)(p)) -> inode;
+		// Found if name and namelength are both equal
+		if(fnamelen == ((struct ext2_dir_entry *)(cur)) -> name_len && 
+			strncmp(((struct ext2_dir_entry *)(cur)) -> name, filename, fnamelen) == 0) {
+			return ((struct ext2_dir_entry *)(cur)) -> inode;
 		}
 
+		// Update cur to position of next file in this block
+		cur += ((struct ext2_dir_entry *)cur) -> rec_len;
 		// Not found if p reach end of block
-		p += ((struct ext2_dir_entry *)p) -> rec_len;
-		if(p >= block_p + EXT2_BLOCK_SIZE) return 0;
+		if(cur >= block_p + EXT2_BLOCK_SIZE) return 0;
 	}
+}
+
+/**
+ * Returns type(short) field given an inode index
+ */
+unsigned short get_inode_mode(int inode_idx) {
+
+	// Make sure inode index in range
+	assert(inode_idx <= sb -> s_inodes_count);
+	
+	return (ind_tbl + inode_idx) -> i_mode;
+	
 }
 
 #endif

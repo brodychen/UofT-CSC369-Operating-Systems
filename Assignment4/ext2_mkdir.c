@@ -58,9 +58,35 @@ int main(int argc, char **argv) {
 	// Pointer to inode bitmap (number 5)
 	ind_bmp = disk + EXT2_BLOCK_SIZE * gt[0].bg_inode_bitmap;
 
-	int rv = cd(argv[2], NULL);
+	
+	// Cd to directory where new dir will be created
+	// Partition new dir and sub-directories
+	int i = strlen(argv[2]) - 1;
+	if(argv[2][i] == '/') argv[i--] = '\0';		// Eliminate trailing slashes
+	while(i >= 0) {								// Move i to last '/'
+		if(argv[2][i] != '/') --i;
+	}
 
+	int parent_dir_inode = 2;
+	// New sub-dir not in root, first cd to working directory
+	if(i != -1) {
+		parent_dir_inode = cd(argv[2], i);
 
+		// Cd fails because path not exist
+		if(parent_dir_inode == -ENOENT) {
+			return ENOENT;
+		}
+	}
+
+	// Check if same directory (but not types) already exists within parent directory
+	++i;
+	int possible_dup_dir = search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
+	if(possible_dup_dir > 0 && (get_inode_mode(possible_dup_dir) & EXT2_S_IFDIR)) {
+		return EEXIST;
+	}
+
+	//
+	
 	
 	return 0;
 }
