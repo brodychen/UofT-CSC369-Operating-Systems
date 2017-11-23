@@ -284,7 +284,7 @@ int cd(char *dir, int dirlen) {
  * Arg1:	Filename
  *			If NULL: search for empty slot
  * Arg2:	Filename length (without '\0')
-			If arg1 NULL: min size for empty slot	
+			If NULL: min size for empty slot	
  * Arg3:	Inode of directory to search
  * Return:	Success:	corresponding struct ext2_dir_entry *
  *			Fail: 		NULL
@@ -298,11 +298,12 @@ int cd(char *dir, int dirlen) {
 	for(i = 0; i < 12; ++i) {	// Direct blocks
 		
 		// Value 0 suggests no further block defined, i.e. not found
-		if((dir -> i_block)[i] == 0) {
+		if(filename != NULL && (dir -> i_block)[i] == 0) {
 			return NULL;
 		}
 
-		rv = search_in_dir_block(filename, fnamelen, (dir -> i_block)[i]);
+		// i_block's block index starts from 0, plus 1 to get the canonical
+		rv = search_in_dir_block(filename, fnamelen, (dir -> i_block)[i]);	
 		if(rv) return rv;	// Found in direct block
 	}
 
@@ -370,7 +371,7 @@ int cd(char *dir, int dirlen) {
 /**
  * Search for a file/dir or slot in a data block.
  * Arg1: 	Filename (char buffer array)
-			If NULL: search for next empty slot
+			If NULL: search for next empty slot, and set context in dir block
  * Arg2:	Length of filename (without '\0')
 			If Arg1 NULL: min size for empty slot
  * Arg3:	Block number (begins from 1)
@@ -379,14 +380,35 @@ int cd(char *dir, int dirlen) {
  */
 struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int block) {
 
-	char *block_p = disk + (block - 1) * EXT2_BLOCK_SIZE;	// Start of block
-	char *cur = block_p;										// Search pos
+	assert(block > 0);										// Block begins with 1
 
+	unsigned char *block_p = disk + (block) * EXT2_BLOCK_SIZE;		// Start of block
+	unsigned char *cur = block_p;									// Search pos
+
+	// If this is a newly allocated block
+	if(filename == NULL && (cur - disk) % 1024 == 0 && ((struct ext2_dir_entry *)(cur)) -> rec_len == 0) {
+		struct ext2_dir_entry *p = (struct ext2_dir_entry *)cur;
+		return p;
+	}
+
+	// Get current directory size, because different with rec_len for last dir block
+	int cur_dir_size, prev_dir_size;
 	while(1) {
 
+		prev_dir_size = cur_dir_size;
+		cur_dir_size = 8 + ((struct ext2_dir_entry *)(cur)) -> name_len;
+		cur_dir_size += 3; cur_dir_size >>= 2; cur_dir_size <<= 2;
+
 		if(filename == NULL) {	// Search for empty slot with enough size
+			
+			// Found enough space in this block
 			if(((struct ext2_dir_entry *)(cur)) -> inode == 0 && 
-			((struct ext2_dir_entry *)(cur)) -> rec_len >= fnamelen) {
+			// ((struct ext2_dir_entry *)(cur)) -> rec_len >= fnamelen) { 
+				(1024 - ((cur - disk) % 1024) - cur_dir_size) >= fnamelen) {
+				
+				// Update rec_len of previous block
+				((struct ext2_dir_entry *)(cur - prev_dir_size)) -> rec_len = prev_dir_size;
+
 				return (struct ext2_dir_entry *)(cur);
 			}
 		}
@@ -400,7 +422,9 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 		}
 
 		// Update cur to position of next file in this block
-		cur += ((struct ext2_dir_entry *)cur) -> rec_len;
+		// cur += ((struct ext2_dir_entry *)cur) -> rec_len;
+		cur += cur_dir_size;
+
 		// Not found if p reach end of block
 		if(cur >= block_p + EXT2_BLOCK_SIZE) return NULL;
 	}

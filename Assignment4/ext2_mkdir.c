@@ -63,11 +63,11 @@ int main(int argc, char **argv) {
 	// Partition new dir and sub-directories
 	int i = strlen(argv[2]) - 1;
 	if(argv[2][i] == '/') argv[2][i--] = '\0';		// Eliminate trailing slashes
-	while(i >= 0) {								// Move i to last '/'
+	while(i >= 0) {									// Move i to last '/'
 		if(argv[2][i] != '/') --i;
 	}
 
-	int parent_dir_inode = 2;
+	int parent_dir_inode = EXT2_ROOT_INO;			// Init with root inode
 	// New sub-dir not in root, first cd to working directory
 	if(i != -1) {
 		parent_dir_inode = cd(argv[2], i);
@@ -81,19 +81,19 @@ int main(int argc, char **argv) {
 	// Check if same directory (but not types) already exists within parent directory
 	++i;
 	struct ext2_dir_entry *possible_dup_dir_ent 
-		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
+		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode - 1);
 	if(possible_dup_dir_ent && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR)) {
 		return EEXIST;
 	}
 
 	// Determine the length of new directory entry
 	int new_ent_name_len = strlen(argv[2]) - i;
-	int new_ent_rec_len = 8 + strlen(argv[2]) - i;
+	int new_ent_rec_len = 8 + new_ent_name_len;
 	// Pad new directory entry length to align with 4
 	new_ent_rec_len += 3; new_ent_rec_len >>= 2; new_ent_rec_len <<= 2;
 
 	// Find the next block in memory for new directory
-	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode);
+	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode - 1);
 
 	// In not last one in data block, maintain last entry (padding)
 	if(new_ent -> rec_len != new_ent_rec_len) {	// Not last dir in this block
