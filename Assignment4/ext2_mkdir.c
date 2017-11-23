@@ -95,14 +95,12 @@ int main(int argc, char **argv) {
 	// Find the next block in memory for new directory
 	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode - 1);
 
-	// In not last one in data block, maintain last entry (padding)
-	if(new_ent -> rec_len != new_ent_rec_len) {	// Not last dir in this block
-		struct ext2_dir_entry *new_ent_next = (struct ext2_dir_entry *)((char *)new_ent + new_ent_rec_len);
-		new_ent_next -> inode = 0;
-		new_ent_next -> rec_len = new_ent -> rec_len - new_ent_rec_len;
-		new_ent_next -> name_len = 0;
-		new_ent_next -> file_type = EXT2_FT_UNKNOWN;
-	}
+	// Setup context for this new dir
+	new_ent -> inode = 0;									// Tobe set later
+	new_ent -> rec_len = 1024 - ((unsigned char *)new_ent - disk) % 1024;
+	new_ent -> name_len = new_ent_name_len;
+	new_ent -> file_type = EXT2_FT_DIR;
+	memcpy((unsigned char *)new_ent + 8, argv[2] + i, new_ent_name_len);
 
 	// Find a empty inode for this directory
 	int new_inode = allocate_inode();
@@ -110,26 +108,26 @@ int main(int argc, char **argv) {
 	new_inode_p -> i_mode = EXT2_S_IFDIR;	// Set new inode mode to directory
 
 	// Allocate a new block for this directory's inode
-	(new_inode_p -> i_block)[0] = allocate_block();
+	int new_block = allocate_block() - 1;
+	(new_inode_p -> i_block)[0] = new_block;
 	// Setup self ent
-	struct ext2_dir_entry *self_ent = (struct ext2_dir_entry *)(new_inode_p -> i_block);
+	struct ext2_dir_entry *self_ent = (struct ext2_dir_entry *)(disk + EXT2_BLOCK_SIZE * new_block);
 	self_ent -> inode = new_inode;
 	self_ent -> rec_len = 12;
 	self_ent -> name_len = 1;
 	self_ent -> file_type = EXT2_FT_DIR;
 	memset(self_ent -> name, '.', 1);
 	// Setup parent ent
-	struct ext2_dir_entry *parent_ent = (struct ext2_dir_entry *)((char *)(new_inode_p -> i_block) + 12);
+	struct ext2_dir_entry *parent_ent = (struct ext2_dir_entry *)(disk + EXT2_BLOCK_SIZE * new_block + 12);
 	parent_ent -> inode = parent_dir_inode;
 	parent_ent -> rec_len = 12;
 	parent_ent -> name_len = 2;
 	parent_ent -> file_type = EXT2_FT_DIR;
 	memset(parent_ent -> name, '.', 2);
 	// Setup padding ent
-	struct ext2_dir_entry *pad_ent = (struct ext2_dir_entry *)((char *)(new_inode_p -> i_block) + 24);
+	struct ext2_dir_entry *pad_ent = (struct ext2_dir_entry *)(disk + EXT2_BLOCK_SIZE * new_block + 24);
 	pad_ent -> rec_len = EXT2_BLOCK_SIZE - 24;
 
-	
 	
 	return 0;
 }
