@@ -10,3 +10,4 @@ ext2_checker
 .*.swp
 
 *.plist
+.nfs*
