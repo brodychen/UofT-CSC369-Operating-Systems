@@ -14,12 +14,12 @@
  * This program works like mkdir, creating the final directory on the 
  * specified path on the disk.
  *
- * Args1: An ext2 formatted virtual disk
- * Args2: An absolute path on this disk
+ * @arg1: An ext2 formatted virtual disk
+ * @arg2: An absolute path on this disk
  *
- * Return: 	Success:					0
- * 			Path not exist: 			ENOENT
- * 			Directory already exists: 	EEXIST
+ * @return: 	Success:					0
+ * 				Path not exist: 			ENOENT
+ * 				Directory already exists: 	EEXIST
  */
 
  extern unsigned char *disk;			// Global pointer to mmap the disk to
@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
 
 		// Cd fails because path not exist
 		if(parent_dir_inode == -ENOENT) {
+			fprintf(stderr, "Path not exists\n");
 			exit(ENOENT);
 		}
 	}
@@ -88,7 +89,7 @@ int main(int argc, char **argv) {
 	struct ext2_dir_entry *possible_dup_dir_ent 
 		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode - 1);
 	if(possible_dup_dir_ent != NULL && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR)) {
-		// printf("Already Exists\n");
+		fprintf(stderr, "Directory already exists\n");
 		exit(EEXIST);
 	}
 
@@ -102,7 +103,7 @@ int main(int argc, char **argv) {
 	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode - 1);
 
 	// Setup context for this new dir
-	new_ent -> inode = 0;									// Tobe set later
+	// new_ent -> inode = 0;									// Tobe set later
 	new_ent -> rec_len = 1024 - ((unsigned char *)new_ent - disk) % 1024;
 	new_ent -> name_len = new_ent_name_len;
 	new_ent -> file_type = EXT2_FT_DIR;
@@ -132,6 +133,8 @@ int main(int argc, char **argv) {
 	parent_ent -> file_type = EXT2_FT_DIR;
 	memset(parent_ent -> name, '.', 2);
 
+	// Update block-group-descriptor
+	gt -> bg_used_dirs_count -= 1;
 	
 	return 0;
 }

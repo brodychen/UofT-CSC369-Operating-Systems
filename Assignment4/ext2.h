@@ -309,6 +309,7 @@ int cd(char *dir, int dirlen) {
 
 	if(rv == 0) {	// If not found, search in indirect blocks (*256)
 		int *indirect_block = (int *)(disk + (dir -> i_block)[12] * EXT2_BLOCK_SIZE);
+		
 		for(i = 0; i < 256; ++i) {
 			
 			// Value 0 suggests no further block defined, i.e. not found
@@ -459,7 +460,9 @@ int allocate_inode() {
 		}
 	}
 
-	// TODO: Update block group desc table & super block
+	// Update block group desc table & super block
+	sb -> s_free_inodes_count -= 1;
+	gt -> bg_free_inodes_count -= 1;
 
 	return 0;
 }
@@ -480,7 +483,9 @@ int allocate_block() {
 		}
 	}
 
-	// TODO: Update block group desc table & super block
+	// Update block group desc table & super block
+	sb -> s_free_blocks_count -= 1;
+	gt -> bg_free_blocks_count -= 1;
 
 	return 0;
 }
