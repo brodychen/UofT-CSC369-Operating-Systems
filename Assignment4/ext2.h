@@ -19,6 +19,7 @@
 #define CSC369_EXT2_FS_H
 
 #include <errno.h>
+#include <stdbool.h>
 
 /* The ext2 block size used in the assignment. */
 #define EXT2_BLOCK_SIZE 1024
@@ -230,6 +231,7 @@ struct ext2_dir_entry *prev_dir_entry;
 // Forward declarations
 struct ext2_dir_entry *search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir);
 struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int block);
+bool is_available_inode(int inode);
 
 /**
  * Function for changing directory.
@@ -404,8 +406,8 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 		if(filename == NULL) {	// Search for empty slot with enough size
 			
 			// Found enough space in this block
-			if(((struct ext2_dir_entry *)(cur)) -> inode == 0 && 
-			// ((struct ext2_dir_entry *)(cur)) -> rec_len >= fnamelen) { 
+			// if(((struct ext2_dir_entry *)(cur)) -> inode == 0 && 
+			if((((struct ext2_dir_entry *)(cur)) -> inode == 0 || is_available_inode(((struct ext2_dir_entry *)(cur)) -> inode)) && 
 				(1024 - ((cur - disk) % 1024) - cur_dir_size) >= fnamelen) {
 				
 				// Update rec_len of previous block
@@ -424,9 +426,13 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 		}
 
 		// Update cur to position of next file in this block
-		// cur += ((struct ext2_dir_entry *)cur) -> rec_len;
 		prev_dir_entry = (struct ext2_dir_entry *)cur;	// Store previous entry
-		cur += cur_dir_size;
+		if(filename != NULL) {
+			cur += ((struct ext2_dir_entry *)(cur)) -> rec_len;
+		}
+		else {
+			cur += cur_dir_size;
+		}
 
 		// Not found if p reach end of block
 		if(cur - block_p >= EXT2_BLOCK_SIZE) return NULL;
@@ -444,6 +450,14 @@ unsigned short get_inode_mode(int inode_idx) {
 	
 	return (ind_tbl + inode_idx - 1) -> i_mode;
 	
+}
+
+/**
+ * Returns whether inode is set in bitmap.
+ * @arg1: inode number (starting from 0)
+ */
+bool is_available_inode(int inode) {
+	return (ind_bmp[inode >> 3] & (1 << (inode % 8))) == 0;
 }
 
 /**
