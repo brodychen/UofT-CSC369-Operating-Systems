@@ -252,8 +252,8 @@ int cd(char *dir, int dirlen) {
 		len = 0;
 		while((cursor + len - dir) < dirlen && cursor[len] != '/') ++len;
 
-		// If last directory (possible trailing slashes)
-		if((cursor - dir + len) >= dirlen - 1) {
+		// If last directory
+		if((cursor - dir + len) >= dirlen) {
 			struct ext2_dir_entry *sub_dir_entry = search_in_dir_inode(cursor, len, cwd);
 
 			// Subdirectory not found
@@ -270,7 +270,7 @@ int cd(char *dir, int dirlen) {
 			if(sub_dir_entry == NULL) return -ENOENT;
 
 			// Update cwd pointing to inode of subdirectory
-			cwd = ind_tbl + (sub_dir_entry -> inode);
+			cwd = ind_tbl + (sub_dir_entry -> inode - 1);
 			// Update cursor to position of next subdirectory
 			cursor += ++len;
 		}
@@ -293,7 +293,7 @@ int cd(char *dir, int dirlen) {
 
 	// Traverse current inode's i_block to find subdirectory
 	int i, j, k;
-	struct ext2_dir_entry *rv = 0;
+	struct ext2_dir_entry *rv = NULL;
 
 	for(i = 0; i < 12; ++i) {	// Direct blocks
 		
@@ -382,7 +382,7 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 
 	assert(block > 0);										// Block begins with 1
 
-	unsigned char *block_p = disk + (block) * EXT2_BLOCK_SIZE;		// Start of block
+	unsigned char *block_p = disk + block * EXT2_BLOCK_SIZE;		// Start of block
 	unsigned char *cur = block_p;									// Search pos
 
 	// If this is a newly allocated block
@@ -426,7 +426,7 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 		cur += cur_dir_size;
 
 		// Not found if p reach end of block
-		if(cur >= block_p + EXT2_BLOCK_SIZE) return NULL;
+		if(cur - block_p >= EXT2_BLOCK_SIZE) return NULL;
 	}
 }
 
@@ -453,7 +453,7 @@ int allocate_inode() {
 	int i;
 	for(i = 11; i < sb -> s_inodes_count; ++i) {	// Skip reserved inodes
 		if((ind_bmp[i >> 3] & (1 << (i % 8))) == 0) {
-			ind_bmp[i >> 3] &= (1 << (i % 8));
+			ind_bmp[i >> 3] |= (1 << (i % 8));
 			memset(ind_tbl + i, 0, sizeof(struct ext2_inode));
 			return i + 1;
 		}
@@ -474,8 +474,8 @@ int allocate_block() {
 	int i;
 	for(i = 8; i < sb -> s_blocks_count; ++i) {		// Skip inode table stuff
 		if((blk_bmp[i >> 3] & (1 << (i % 8))) == 0) {
-			blk_bmp[i >> 3] &= (1 << (i % 8));
-			memset(disk + i, 0, EXT2_BLOCK_SIZE);
+			blk_bmp[i >> 3] |= (1 << (i % 8));
+			memset(disk + i * EXT2_BLOCK_SIZE, 0, EXT2_BLOCK_SIZE);
 			return i + 1;
 		}
 	}
