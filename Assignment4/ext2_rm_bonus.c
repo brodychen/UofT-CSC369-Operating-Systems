@@ -46,21 +46,21 @@ int main(int argc, char **argv) {
     // Parse input
     bool recursive = 0;     // Whether recursion
     bool input_valid = 1;   // Whether input is valid
-    // if(argc == 4) {
-    //     if(argv[2][0] == '-' && argv[2][1] == 'r') {
-    //         recursive == 1;
-    //         argv[2] = argv[3];  // argv[2] points to file/dir name
-    //     }
-    //     else {
-    //         input_valid = 0;
-    //     }
-    // }
+    if(argc == 4) {
+        if(argv[2][0] == '-' && argv[2][1] == 'r') {
+            recursive == 1;
+            argv[2] = argv[3];  // argv[2] points to file/dir name
+        }
+        else {
+            input_valid = 0;
+        }
+    }
     if(argc != 3) {
         input_valid = 0;
     } 
     if(!input_valid) {
-        // fprintf(stderr, "Usage: %s <image file name> <flag> <path>\n");
-        fprintf(stderr, "Usage: %s <image file name> <path>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <image file name> <flag> <path>\n", argv[0]);
+        // fprintf(stderr, "Usage: %s <image file name> <path>\n", argv[0]);
         exit(1);
     }
     int fd = open(argv[1], O_RDWR);		// Allow r & w
@@ -194,7 +194,7 @@ void free_inode(int inode, bool recursive) {
 
     // Clear bit map
     assert((ind_bmp[inode >> 3] & (1 << (inode % 8))) == 1);    // Make sure set
-    ind_bmp[inode >> 3] |= (char)(~(1 << (inode % 8)));
+    ind_bmp[inode >> 3] |= ~(1 << (inode % 8));
 
     // Remove every block in i_block
     int i, j, k;

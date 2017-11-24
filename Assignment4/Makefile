@@ -1,4 +1,4 @@
-TARGET = ext2_mkdir ext2_cp ext2_rm
+TARGET = ext2_mkdir ext2_cp ext2_rm ext2_rm_bonus
 DEPS = ext2.h
 CFLAGS =  -g
 
@@ -12,6 +12,9 @@ ext2_cp: ext2_cp.c ${DEPS}
 
 ext2_rm: ext2_rm.c ${DEPS}
 	gcc -o ext2_rm ext2_rm.c ${CFLAGS}
+
+ext2_rm_bonus: ext2_rm_bonus.c ${DEPS}
+	gcc -o ext2_rm_bonus ext2_rm_bonus.c ${CFLAGS}
 
 clean:
 	rm -f ${TARGET}
