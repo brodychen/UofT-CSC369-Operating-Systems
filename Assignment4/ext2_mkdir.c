@@ -22,13 +22,13 @@
  * 				Directory already exists: 	EEXIST
  */
 
- extern unsigned char *disk;			// Global pointer to mmap the disk to
- 
- extern struct ext2_super_block *sb;	// Pointer to super block
- extern struct ext2_group_desc *gt;		// Pointer to group table
- extern struct ext2_inode *ind_tbl;		// Pointer to inode table
- extern char *blk_bmp;					// Pointer to block bitmap
- extern char *ind_bmp;					// Pointer to inode bitmap
+extern unsigned char *disk;				// Global pointer to mmap the disk to
+
+extern struct ext2_super_block *sb;		// Pointer to super block
+extern struct ext2_group_desc *gt;		// Pointer to group table
+extern struct ext2_inode *ind_tbl;		// Pointer to inode table
+extern char *blk_bmp;					// Pointer to block bitmap
+extern char *ind_bmp;					// Pointer to inode bitmap
 
 
 int main(int argc, char **argv) {
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 		// Cd fails because path not exist
 		if(parent_dir_inode == -ENOENT) {
 			fprintf(stderr, "Path not exists\n");
-			exit(ENOENT);
+			return ENOENT;
 		}
 	}
 

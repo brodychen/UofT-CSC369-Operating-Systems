@@ -302,7 +302,7 @@ int cd(char *dir, int dirlen) {
 			return NULL;
 		}
 
-		// i_block's block index starts from 0, plus 1 to get the canonical
+		// i_block's block index starts from 0
 		rv = search_in_dir_block(filename, fnamelen, (dir -> i_block)[i]);	
 		if(rv) return rv;	// Found in direct block
 	}
@@ -380,8 +380,6 @@ int cd(char *dir, int dirlen) {
  * 			Fail: NULL
  */
 struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int block) {
-
-	assert(block > 0);										// Block begins with 1
 
 	unsigned char *block_p = disk + block * EXT2_BLOCK_SIZE;		// Start of block
 	unsigned char *cur = block_p;									// Search pos
