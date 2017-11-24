@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
 		else break;
 	}
 	if(argv[2][0] == '.' && argv[2][1] == '/') {	// Eliminate './' at beginning
-		argv += 2;
+		argv[2] += 2;
 		i -= 2;
 	}
 
