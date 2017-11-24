@@ -38,6 +38,9 @@ extern struct ext2_inode *ind_tbl;		// Pointer to inode table
 extern char *blk_bmp;					// Pointer to block bitmap
 extern char *ind_bmp;					// Pointer to inode bitmap
 
+// Used to store previous dir entry of the entry to be removed
+extern struct ext2_dir_entry *prev_dir_entry;
+
 int main(int argc, char **argv) {
 
     // Parse input
@@ -111,13 +114,25 @@ int main(int argc, char **argv) {
 	struct ext2_dir_entry *possible_dup_dir_ent 
 		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode - 1);
 	if(possible_dup_dir_ent == NULL) {
-		fprintf(stderr, "Directory already exists\n");
+		fprintf(stderr, "Directory not exists\n");
 		return EEXIST;
     }
     else if(get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR) {
         fprintf(stderr, "Can't remove directory\n");
         return EISDIR;
     }
+
+    // Set context of previous dir entry (if exists)
+    if(prev_dir_entry){
+        prev_dir_entry -> rec_len += possible_dup_dir_ent -> rec_len;
+    }
+    // Removed entry is first in dir block
+    else {
+        // TODO: clear this dir block
+    }
+
+    // Remove this directory entry
+
 }
 
 /**

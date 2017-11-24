@@ -224,6 +224,9 @@ struct ext2_inode *ind_tbl;		// Pointer to inode table
 char *blk_bmp;					// Pointer to block bitmap
 char *ind_bmp;					// Pointer to inode bitmap
 
+// Used in rm, used to store previous dir entry of the entry to be removed
+struct ext2_dir_entry *prev_dir_entry;
+
 // Forward declarations
 struct ext2_dir_entry *search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir);
 struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int block);
@@ -383,6 +386,7 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 
 	unsigned char *block_p = disk + block * EXT2_BLOCK_SIZE;		// Start of block
 	unsigned char *cur = block_p;									// Search pos
+	prev_dir_entry = NULL;			// If return with NULL, then first ent in this dir block
 
 	// If this is a newly allocated block
 	if(filename == NULL && (cur - disk) % 1024 == 0 && ((struct ext2_dir_entry *)(cur)) -> rec_len == 0) {
@@ -422,6 +426,7 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 
 		// Update cur to position of next file in this block
 		// cur += ((struct ext2_dir_entry *)cur) -> rec_len;
+		prev_dir_entry = (struct ext2_dir_entry *)cur;	// Store previous entry
 		cur += cur_dir_size;
 
 		// Not found if p reach end of block
