@@ -67,10 +67,6 @@ int main(int argc, char **argv) {
 	// Partition new dir and sub-directories
 	int i = strlen(argv[2]) - 1;
 	if(argv[2][i] == '/') argv[2][i--] = '\0';		// Eliminate trailing slashes
-	while(i >= 0) {									// Move i to last '/'
-		if(argv[2][i] != '/') --i;
-		else break;
-	}
 	if(argv[2][0] == '.' && argv[2][1] == '/') {	// Eliminate './' at beginning
 		argv[2] += 2;
 		i -= 2;
@@ -83,14 +79,22 @@ int main(int argc, char **argv) {
 
 		// Cd fails because path not exist
 		if(parent_dir_inode == -ENOENT) {
+			fprintf(stderr, "cannot cp: No such file or directory\n");
 			exit(ENOENT);
 		}
 	}
 
+	// Extract name of source file
+	int j = strlen(argv[2]) - 1;
+	while(j >= 0) {
+		if(argv[2][j] != '/') --j;
+		else break;
+	}
+	++j;
+
 	// Check if file (but not dir) with same name already exists within parent directory
-	++i;
 	struct ext2_dir_entry *possible_dup_dir_ent 
-		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode - 1);
+		= search_in_dir_inode(argv[2] + j, strlen(argv[2]) - j, ind_tbl + parent_dir_inode - 1);
 	if(possible_dup_dir_ent != NULL && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFREG)) {
 		printf("File already exists, stop copying\n");
 		exit(EEXIST);
@@ -135,7 +139,7 @@ int main(int argc, char **argv) {
 
 	// Allocate new blocks for the copied file
 
-	int j, k;
+	int k;
 	bool cp_complete = 0;
 
 	for(i = 0; i < 12; ++i) {	// Direct blocks
