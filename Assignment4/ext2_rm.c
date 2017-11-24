@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
     } 
     if(!input_valid) {
         // fprintf(stderr, "Usage: %s <image file name> <flag> <path>\n");
-        fprintf(stderr, "Usage: %s <image file name> <path>\n");
+        fprintf(stderr, "Usage: %s <image file name> <path>\n", argv[0]);
         exit(1);
     }
     int fd = open(argv[1], O_RDWR);		// Allow r & w

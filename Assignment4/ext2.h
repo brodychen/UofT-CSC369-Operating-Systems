@@ -276,8 +276,7 @@ int cd(char *dir, int dirlen) {
 			cwd = ind_tbl + (sub_dir_entry -> inode - 1);
 			// Update cursor to position of next subdirectory
 			cursor += ++len;
-		}
-		
+		}	
 	}
 }
 
