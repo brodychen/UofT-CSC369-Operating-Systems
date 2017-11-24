@@ -65,17 +65,18 @@ int main(int argc, char **argv) {
 
 	// Cd to directory where new file will be created
 	// Partition new dir and sub-directories
-	int i = strlen(argv[2]) - 1;
-	if(argv[2][i] == '/') argv[2][i--] = '\0';		// Eliminate trailing slashes
-	if(argv[2][0] == '.' && argv[2][1] == '/') {	// Eliminate './' at beginning
-		argv[2] += 2;
+	int i = strlen(argv[3]) - 1;
+	if(argv[3][i] == '/') argv[3][i--] = '\0';		// Eliminate trailing slashes
+	if(argv[3][0] == '.' && argv[3][1] == '/') {	// Eliminate './' at beginning
+		argv[3] += 2;
 		i -= 2;
 	}
+	++i;
 
 	int parent_dir_inode = EXT2_ROOT_INO;			// Init with root inode
 	// New sub-dir not in root, first cd to working directory
-	if(i != -1) {
-		parent_dir_inode = cd(argv[2], i);
+	if(argv[3][0] != '.') {
+		parent_dir_inode = cd(argv[3], i);
 
 		// Cd fails because path not exist
 		if(parent_dir_inode == -ENOENT) {
@@ -100,8 +101,8 @@ int main(int argc, char **argv) {
 		exit(EEXIST);
 	}
 
-	// Determine the length of new directory entry
-	int new_ent_name_len = strlen(argv[2]) - i;
+	// Determine the length of new file entry
+	int new_ent_name_len = strlen(argv[2]) - j;
 	int new_ent_rec_len = 8 + new_ent_name_len;
 	// Pad new directory entry length to align with 4
 	new_ent_rec_len += 3; new_ent_rec_len >>= 2; new_ent_rec_len <<= 2;
@@ -114,7 +115,7 @@ int main(int argc, char **argv) {
 	new_ent -> rec_len = 1024 - ((unsigned char *)new_ent - disk) % 1024;
 	new_ent -> name_len = new_ent_name_len;
 	new_ent -> file_type = EXT2_FT_DIR;
-	memcpy((unsigned char *)new_ent + 8, argv[2] + i, new_ent_name_len);
+	memcpy((unsigned char *)new_ent + 8, argv[2] + j, new_ent_name_len);
 
 	// Find a empty inode for this directory
 	int new_inode = allocate_inode();
