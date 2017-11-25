@@ -72,12 +72,13 @@ int main(int argc, char **argv) {
 		i -= 2;
 	}
 
-	int parent_dir_inode = EXT2_ROOT_INO;			// Init with root inode
+	int parent_dir_inode = EXT2_ROOT_INO - 1;			// Init with root inode
 	// New sub-dir not in root, first cd to working directory
 	if(i != -1) {
 		parent_dir_inode = cd(argv[2], i);
+		fprintf(stderr, "mkdir: cd to inode %d\n", parent_dir_inode + 1);
 
-		// Cd fails because path not exist
+		// Cd fails because path not exparent_dir_inodeist
 		if(parent_dir_inode == -ENOENT) {
 			fprintf(stderr, "Path not exists\n");
 			return ENOENT;
@@ -87,7 +88,7 @@ int main(int argc, char **argv) {
 	// Check if same directory (but not types) already exists within parent directory
 	++i;
 	struct ext2_dir_entry *possible_dup_dir_ent 
-		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode - 1);
+		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
 	if(possible_dup_dir_ent != NULL && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR)) {
 		fprintf(stderr, "Directory already exists\n");
 		exit(EEXIST);
@@ -96,11 +97,11 @@ int main(int argc, char **argv) {
 	// Determine the length of new directory entry
 	int new_ent_name_len = strlen(argv[2]) - i;
 	int new_ent_rec_len = 8 + new_ent_name_len;
-	// Pad new directory entry length to align with 4
+	// Pad new directory entry lengthparent_dir_inode to align with 4
 	new_ent_rec_len += 3; new_ent_rec_len >>= 2; new_ent_rec_len <<= 2;
 
 	// Find the next block in memory for new directory
-	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode - 1);
+	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode);
 
 	// Setup context for this new dir
 	// new_ent -> inode = 0;									// Tobe set later
@@ -110,9 +111,9 @@ int main(int argc, char **argv) {
 	memcpy((unsigned char *)new_ent + 8, argv[2] + i, new_ent_name_len);
 
 	// Find a empty inode for this directory
-	int new_inode = allocate_inode();
-	new_ent -> inode = new_inode;
-	struct ext2_inode *new_inode_p = ind_tbl + new_inode - 1;
+	int new_inode = allocate_inode() - 1;
+	new_ent -> inode = new_inode + 1;
+	struct ext2_inode *new_inode_p = ind_tbl + new_inode;
 	new_inode_p -> i_mode = EXT2_S_IFDIR;	// Set new inode mode to directory
 
 	// Allocate a new block for this directory's inode
@@ -120,21 +121,21 @@ int main(int argc, char **argv) {
 	(new_inode_p -> i_block)[0] = new_block;
 	// Setup self ent
 	struct ext2_dir_entry *self_ent = (struct ext2_dir_entry *)(disk + EXT2_BLOCK_SIZE * new_block);
-	self_ent -> inode = new_inode;
+	self_ent -> inode = new_inode + 1;
 	self_ent -> rec_len = 12;
 	self_ent -> name_len = 1;
 	self_ent -> file_type = EXT2_FT_DIR;
 	memset(self_ent -> name, '.', 1);
 	// Setup parent ent
 	struct ext2_dir_entry *parent_ent = (struct ext2_dir_entry *)(disk + EXT2_BLOCK_SIZE * new_block + 12);
-	parent_ent -> inode = parent_dir_inode;
+	parent_ent -> inode = parent_dir_inode + 1;
 	parent_ent -> rec_len = 1012;
 	parent_ent -> name_len = 2;
 	parent_ent -> file_type = EXT2_FT_DIR;
 	memset(parent_ent -> name, '.', 2);
 
 	// Update block-group-descriptor
-	gt -> bg_used_dirs_count -= 1;
+	gt -> bg_used_dirs_count += 1;
 	
 	return 0;
 }

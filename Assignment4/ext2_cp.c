@@ -73,10 +73,11 @@ int main(int argc, char **argv) {
 	}
 	++i;
 
-	int parent_dir_inode = EXT2_ROOT_INO;			// Init with root inode
+	int parent_dir_inode = EXT2_ROOT_INO - 1;			// Init with root inode
 	// New sub-dir not in root, first cd to working directory
 	if(argv[3][0] != '.') {
 		parent_dir_inode = cd(argv[3], i);
+		fprintf(stderr, "mkdir: cd to inode %d\n", parent_dir_inode + 1);
 
 		// Cd fails because path not exist
 		if(parent_dir_inode == -ENOENT) {
@@ -97,7 +98,7 @@ int main(int argc, char **argv) {
 	struct ext2_dir_entry *possible_dup_dir_ent 
 		= search_in_dir_inode(argv[2] + j, strlen(argv[2]) - j, ind_tbl + parent_dir_inode - 1);
 	if(possible_dup_dir_ent != NULL && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFREG)) {
-		printf("File already exists, stop copying\n");
+		fprintf(stderr, "File already exists, stop copying\n");
 		exit(EEXIST);
 	}
 
@@ -117,10 +118,19 @@ int main(int argc, char **argv) {
 	new_ent -> file_type = EXT2_FT_DIR;
 	memcpy((unsigned char *)new_ent + 8, argv[2] + j, new_ent_name_len);
 
-	// Find a empty inode for this directory
-	int new_inode = allocate_inode();
-	new_ent -> inode = new_inode;
-	struct ext2_inode *new_inode_p = ind_tbl + new_inode - 1;
+	// Modify rec_len for previous directory
+	if(prev_dir_entry) {
+		prev_dir_entry -> rec_len = prev_dir_entry -> name_len + 8;
+		(prev_dir_entry -> rec_len) += 3;
+		(prev_dir_entry -> rec_len) >>= 2;
+		(prev_dir_entry -> rec_len) <<= 2;
+		fprintf(stderr, "previous dir rec_len modified to %d\n", (prev_dir_entry -> rec_len));
+	}
+
+	// Find a empty inode for this file
+	int new_inode = allocate_inode() - 1;
+	new_ent -> inode = new_inode + 1;
+	struct ext2_inode *new_inode_p = ind_tbl + new_inode;
 	new_inode_p -> i_mode = EXT2_S_IFREG;	// Set new inode mode to regular file
 
 

@@ -48,14 +48,15 @@ int main(int argc, char **argv) {
     bool input_valid = 1;   // Whether input is valid
     if(argc == 4) {
         if(argv[2][0] == '-' && argv[2][1] == 'r') {
-            recursive == 1;
+            fprintf(stderr, "Removing directory recursively\n");
+            recursive = 1;
             argv[2] = argv[3];  // argv[2] points to file/dir name
         }
         else {
             input_valid = 0;
         }
     }
-    if(argc != 3) {
+    else if(argc != 3) {
         input_valid = 0;
     } 
     if(!input_valid) {
@@ -97,7 +98,7 @@ int main(int argc, char **argv) {
 		i -= 2;
 	}
 
-    int parent_dir_inode = EXT2_ROOT_INO;			// Init with root inode
+    int parent_dir_inode = EXT2_ROOT_INO - 1;			// Init with root inode
 	// New sub-dir not in root, first cd to working directory
 	if(i != -1) {
 		parent_dir_inode = cd(argv[2], i);
@@ -117,7 +118,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Directory not exists\n");
 		return EEXIST;
     }
-    else if(get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR) {
+    else if((get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR) && !recursive) {
         fprintf(stderr, "Can't remove directory\n");
         return EISDIR;
     }
@@ -125,6 +126,7 @@ int main(int argc, char **argv) {
     // Set context of previous dir entry (if exists)
     if(prev_dir_entry){
         prev_dir_entry -> rec_len += possible_dup_dir_ent -> rec_len;
+        fprintf(stderr, "Prev rec_len restored to %d\n", prev_dir_entry -> rec_len);
     }
     // Removed entry is first in dir block
     else {
@@ -132,7 +134,12 @@ int main(int argc, char **argv) {
     }
 
     // Remove this directory entry
-
+    if(recursive) {
+        free_inode(possible_dup_dir_ent -> inode - 1, true);
+    }
+    else {
+        free_inode(possible_dup_dir_ent -> inode - 1, false);
+    }
 }
 
 /**
@@ -140,8 +147,9 @@ int main(int argc, char **argv) {
  * @arg1: block number (starting from 0)
  */
 void free_block(int block) {
-    assert((blk_bmp[block >> 3] & (1 << (block % 8))) == 1);    // Make sure bit is set
-    blk_bmp[block >> 3] |= (~(1 << (block % 8)));
+    fprintf(stderr, "Freeing block %d\n", block);
+    assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
+    blk_bmp[block >> 3] &= (~(1 << (block % 8)));
 }
 
 /**
@@ -150,6 +158,13 @@ void free_block(int block) {
  * @arg1: block number (starting from 0)
  */
 void free_dir_block(int block) {
+    fprintf(stderr, "Freeing dir block %d\n", block);
+
+    assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
+    blk_bmp[block >> 3] &= (~(1 << (block % 8)));
+    sb -> s_free_blocks_count += 1;
+    gt -> bg_free_blocks_count += 1;
+    gt -> bg_used_dirs_count += 1;
     
     unsigned char *block_p = disk + block * EXT2_BLOCK_SIZE;		// Start of block
 	unsigned char *cur = block_p;									// Search pos
@@ -163,16 +178,15 @@ void free_dir_block(int block) {
         cur_dir_size += 3; cur_dir_size >>= 2; cur_dir_size <<= 2;
         
         // Free this inode recursively
-        free_inode(((struct ext2_dir_entry *)(cur)) -> inode, true);
+        free_inode(((struct ext2_dir_entry *)(cur)) -> inode - 1, true);
         
         // Update cur to position of next file in this block
 		// cur += ((struct ext2_dir_entry *)cur) -> rec_len;
-		cur += cur_dir_size;
+		cur += ((struct ext2_dir_entry *)(cur)) -> rec_len;
         
         // Not found if p reach end of block
         if(cur - block_p >= EXT2_BLOCK_SIZE) return;
     }
-
 }
 
 /**
@@ -180,107 +194,120 @@ void free_dir_block(int block) {
  * Clears inode bitmap.
  * Double recursion between free_inode() and free_dir_block()
  * 
- * @arg1: inode number (starting from 1)
+ * @arg1: inode number (starting from 0)
  * @arg2: Whether rm recursively
  */
 void free_inode(int inode, bool recursive) {
 
-    --inode;
     // Check inode file type
-    if((ind_tbl[inode].i_mode) & EXT2_S_IFDIR && !recursive) {
+    if(((ind_tbl[inode].i_mode) & EXT2_S_IFDIR) && !recursive) {
         fprintf(stderr, "Cannot remove directory\n");
         exit(EISDIR);
     }
 
-    // Clear bit map
-    assert((ind_bmp[inode >> 3] & (1 << (inode % 8))) == 1);    // Make sure set
-    ind_bmp[inode >> 3] |= ~(1 << (inode % 8));
-
     // Remove every block in i_block
     int i, j, k;
     struct ext2_inode *inode_p = ind_tbl + inode;
+    bool rm_complete = 0;
     for(i = 0; i < 12; ++i) {   // Direct blocks
 
         // Value 0 suggests no further block defined, return
 		if((inode_p -> i_block)[i] == 0) {
-            return;
+            rm_complete = 1;
+            break;
         }
 
-        if(!recursive) {
+        if(!recursive || ((inode_p -> i_mode & EXT2_S_IFDIR) == 0)) {
             free_block((inode_p -> i_block)[i]);
         }
         else {
             free_dir_block((inode_p -> i_block)[i]);
         }
-        (inode_p -> i_block)[i] = 0;
+        // (inode_p -> i_block)[i] = 0;
     }
 
-    // File also in indirect blocks, keep removing 
-    int *indirect_block = (int *)(disk + (inode_p -> i_block)[13] * EXT2_BLOCK_SIZE);
+    // File also in indirect blocks, keep  
+    if(rm_complete == 0) {
+        int *indirect_block = (int *)(disk + (inode_p -> i_block)[13] * EXT2_BLOCK_SIZE);
 
-    for(i = 0; i < 256; ++i) {
+        for(i = 0; i < 256; ++i) {
 
-        // Value 0 suggests no further block defined, return
-        if(indirect_block[i] == 0) {
-            return;
+            // Value 0 suggests no further block defined, return
+            if(indirect_block[i] == 0) {
+                rm_complete = 1;
+                break;
+            }
+            
+            if(!recursive || ((inode_p -> i_mode & EXT2_S_IFDIR) == 0)) {
+                free_block(indirect_block[i]);
+            }
+            else {
+                free_dir_block(indirect_block[i]);
+            }
+            // indirect_block[i] = 0;
         }
-        
-        if(!recursive) {
-            free_block(indirect_block[i]);
-        }
-        else {
-            free_dir_block(indirect_block[i]);
-        }
-        indirect_block[i] = 0;
     }
 
     // File also in double indirect blocks, keep removing
-    indirect_block = (int *)(disk + (inode_p -> i_block)[14] * EXT2_BLOCK_SIZE);
+    if(rm_complete == 0) {
+        int *indirect_block = (int *)(disk + (inode_p -> i_block)[14] * EXT2_BLOCK_SIZE);
 
-    for(i = 0; i < 256; ++i) {
-        int *db_indirect_block = (int *)(disk + indirect_block[i] * EXT2_BLOCK_SIZE);
+        for(i = 0; i < 256; ++i) {
+            int *db_indirect_block = (int *)(disk + indirect_block[i] * EXT2_BLOCK_SIZE);
 
-        for(j = 0; j < 256; ++j) {
+            for(j = 0; j < 256; ++j) {
 
-            // Value 0 suggests no further block defined, return
-            if(db_indirect_block[j] == 0) {
-                return;
-            }
+                // Value 0 suggests no further block defined, return
+                if(db_indirect_block[j] == 0) {
+                    rm_complete = 1;
+                    break;
+                }
 
-            if(!recursive) {
-                free_block(db_indirect_block[j]);
-            }
-            else {
-                free_dir_block(db_indirect_block[j]);
-            }
-            db_indirect_block[j] = 0;
-        }
-    }
-
-    // File also in triple indirect blocks, keep removing
-    indirect_block = (int *)(disk + (inode_p -> i_block)[14] * EXT2_BLOCK_SIZE);
-
-    for(i = 0; i < 256; ++i) {
-        int *db_indirect_block = (int *)(disk + indirect_block[i] * EXT2_BLOCK_SIZE);
-
-        for(j = 0; j < 256; ++j) {
-            int *tp_indirect_block = (int *)(disk + db_indirect_block[j] * EXT2_BLOCK_SIZE);
-
-            for(k = 0; k < 256; ++k) {
-
-                // Value 0 suggests no further block defined, i.e. not found
-                if(tp_indirect_block[k] == 0) {
-                    return;
-                }	
-
-                if(!recursive) {
+                if(!recursive || ((inode_p -> i_mode & EXT2_S_IFDIR) == 0)) {
                     free_block(db_indirect_block[j]);
                 }
                 else {
                     free_dir_block(db_indirect_block[j]);
                 }
-                db_indirect_block[j] = 0;
+                // db_indirect_block[j] = 0;
             }
         }
     }
+
+    // File also in triple indirect blocks, keep removing
+    if(rm_complete == 0) {
+        int *indirect_block = (int *)(disk + (inode_p -> i_block)[14] * EXT2_BLOCK_SIZE);
+
+        for(i = 0; i < 256; ++i) {
+            int *db_indirect_block = (int *)(disk + indirect_block[i] * EXT2_BLOCK_SIZE);
+
+            for(j = 0; j < 256; ++j) {
+                int *tp_indirect_block = (int *)(disk + db_indirect_block[j] * EXT2_BLOCK_SIZE);
+
+                for(k = 0; k < 256; ++k) {
+
+                    // Value 0 suggests no further block defined, i.e. not found
+                    if(tp_indirect_block[k] == 0) {
+                        rm_complete = 1;
+                        break;
+                    }	
+
+                    if(!recursive || ((inode_p -> i_mode & EXT2_S_IFDIR) == 0)) {
+                        free_block(db_indirect_block[j]);
+                    }
+                    else {
+                        free_dir_block(db_indirect_block[j]);
+                    }
+                    // db_indirect_block[j] = 0;
+                }
+            }
+        }
+    }
+
+    // Clear bit map
+    fprintf(stderr, "trying to clear bitmap of %d\n", inode + 1);
+    assert((ind_bmp[inode >> 3] & (1 << (inode % 8))) >= 1);    // Make sure set
+    ind_bmp[inode >> 3] &= ~(1 << (inode % 8));
+    sb -> s_free_inodes_count += 1;
+    gt -> bg_free_inodes_count += 1;
 }

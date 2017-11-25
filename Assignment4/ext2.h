@@ -264,7 +264,7 @@ int cd(char *dir, int dirlen) {
 			// Subdirectory not found
 			if(sub_dir_entry == NULL) return -ENOENT;
 
-			return sub_dir_entry -> inode;
+			return sub_dir_entry -> inode - 1;
 		}
 
 		// Not last directory, search recursively in subdirectories
@@ -379,7 +379,7 @@ int cd(char *dir, int dirlen) {
 			If NULL: search for next empty slot, and set context in dir block
  * Arg2:	Length of filename (without '\0')
 			If Arg1 NULL: min size for empty slot
- * Arg3:	Block number (begins from 1)
+ * Arg3:	Block number (begins from 0)
  * Return: 	Success: corresponding ext2_dir_entry *
  * 			Fail: NULL
  */
@@ -407,11 +407,12 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 			
 			// Found enough space in this block
 			// if(((struct ext2_dir_entry *)(cur)) -> inode == 0 && 
-			if((((struct ext2_dir_entry *)(cur)) -> inode == 0 || is_available_inode(((struct ext2_dir_entry *)(cur)) -> inode)) && 
+			if((((struct ext2_dir_entry *)(cur)) -> inode == 0 || is_available_inode((((struct ext2_dir_entry *)(cur)) -> inode))) && 
 				(1024 - ((cur - disk) % 1024) - cur_dir_size) >= fnamelen) {
 				
 				// Update rec_len of previous block
 				((struct ext2_dir_entry *)(cur - prev_dir_size)) -> rec_len = prev_dir_size;
+				fprintf(stderr, "Empty pos found at %d\n", (int)(cur - block_p));
 
 				return (struct ext2_dir_entry *)(cur);
 			}
@@ -454,9 +455,10 @@ unsigned short get_inode_mode(int inode_idx) {
 
 /**
  * Returns whether inode is set in bitmap.
- * @arg1: inode number (starting from 0)
+ * @arg1: inode number (starting from 1)
  */
 bool is_available_inode(int inode) {
+	--inode;
 	return (ind_bmp[inode >> 3] & (1 << (inode % 8))) == 0;
 }
 
@@ -472,6 +474,7 @@ int allocate_inode() {
 		if((ind_bmp[i >> 3] & (1 << (i % 8))) == 0) {
 			ind_bmp[i >> 3] |= (1 << (i % 8));
 			memset(ind_tbl + i, 0, sizeof(struct ext2_inode));
+			fprintf(stderr, "Allocating inode %d\n", i + 1);
 			return i + 1;
 		}
 	}
@@ -495,6 +498,7 @@ int allocate_block() {
 		if((blk_bmp[i >> 3] & (1 << (i % 8))) == 0) {
 			blk_bmp[i >> 3] |= (1 << (i % 8));
 			memset(disk + i * EXT2_BLOCK_SIZE, 0, EXT2_BLOCK_SIZE);
+			fprintf(stderr, "Allocating block %d\n", i + 1);
 			return i + 1;
 		}
 	}
