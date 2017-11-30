@@ -339,7 +339,7 @@ int cd(char *dir, int dirlen) {
 					return NULL;
 				}
 
-				rv = search_in_dir_block(filename, fnamelen, db_indirect_block[i]);
+				rv = search_in_dir_block(filename, fnamelen, db_indirect_block[j]);
 				if(rv) return rv;	// Found in double indirect block
 			}
 		}
@@ -361,7 +361,7 @@ int cd(char *dir, int dirlen) {
 						return NULL;
 					}		
 					
-					rv = search_in_dir_block(filename, fnamelen, tp_indirect_block[i]);
+					rv = search_in_dir_block(filename, fnamelen, tp_indirect_block[k]);
 					if(rv) return rv;	// Found in triple indirect block
 				}
 			}
