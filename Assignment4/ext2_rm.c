@@ -109,12 +109,12 @@ int main(int argc, char **argv) {
 		}
     }
     
-    // Check if same directory (but not types) exists within parent directory
+    // Check if file to remove not exists or is a directory
 	++i;
 	struct ext2_dir_entry *possible_dup_dir_ent 
 		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
 	if(possible_dup_dir_ent == NULL) {
-		fprintf(stderr, "Directory not exists\n");
+		fprintf(stderr, "File not exists\n");
 		return EEXIST;
     }
     else if(get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFDIR) {
@@ -122,17 +122,18 @@ int main(int argc, char **argv) {
         return EISDIR;
     }
 
+    // Remove this directory entry
+    free_inode(possible_dup_dir_ent -> inode, false);
+
     // Set context of previous dir entry (if exists)
     if(prev_dir_entry){
         prev_dir_entry -> rec_len += possible_dup_dir_ent -> rec_len;
     }
     // Removed entry is first in dir block
     else {
-        // TODO: clear this dir block
+        // Set first inode to 0 (unrecoverable)
+        possible_dup_dir_ent -> inode = 0;
     }
-
-    // Remove this directory entry
-    free_inode(possible_dup_dir_ent -> inode, false);
 
 }
 

@@ -11,3 +11,4 @@ ext2_checker
 
 *.plist
 .nfs*
+*.dSYM
