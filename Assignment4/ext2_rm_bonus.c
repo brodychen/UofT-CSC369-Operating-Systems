@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     // Check if same directory (but not types) exists within parent directory
 	++i;
 	struct ext2_dir_entry *possible_dup_dir_ent 
-		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode - 1);
+		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
 	if(possible_dup_dir_ent == NULL) {
 		fprintf(stderr, "Directory not exists\n");
 		return EEXIST;
@@ -148,6 +148,7 @@ int main(int argc, char **argv) {
  */
 void free_block(int block) {
     fprintf(stderr, "Freeing block %d\n", block);
+
     assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
     blk_bmp[block >> 3] &= (~(1 << (block % 8)));
 }
@@ -167,7 +168,7 @@ void free_dir_block(int block) {
     gt -> bg_used_dirs_count += 1;
     
     unsigned char *block_p = disk + block * EXT2_BLOCK_SIZE;		// Start of block
-	unsigned char *cur = block_p;									// Search pos
+    unsigned char *cur = block_p;									// Search pos
 
     // Get current directory size, because different with rec_len for last dir block
     int cur_dir_size, prev_dir_size;
@@ -177,8 +178,13 @@ void free_dir_block(int block) {
 		cur_dir_size = 8 + ((struct ext2_dir_entry *)(cur)) -> name_len;
         cur_dir_size += 3; cur_dir_size >>= 2; cur_dir_size <<= 2;
         
-        // Free this inode recursively
-        free_inode(((struct ext2_dir_entry *)(cur)) -> inode - 1, true);
+        // Skip over . and ..
+        if(strncmp(((struct ext2_dir_entry *)(cur)) -> name, ".", ((struct ext2_dir_entry *)(cur)) -> name_len) == 0);
+        else if(strncmp(((struct ext2_dir_entry *)(cur)) -> name, "..", ((struct ext2_dir_entry *)(cur)) -> name_len) == 0);
+        else {
+            // Free this inode recursively
+            free_inode(((struct ext2_dir_entry *)(cur)) -> inode - 1, true);
+        }
         
         // Update cur to position of next file in this block
 		// cur += ((struct ext2_dir_entry *)cur) -> rec_len;

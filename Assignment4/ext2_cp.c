@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
 	// Check if file (but not dir) with same name already exists within parent directory
 	struct ext2_dir_entry *possible_dup_dir_ent 
-		= search_in_dir_inode(argv[2] + j, strlen(argv[2]) - j, ind_tbl + parent_dir_inode - 1);
+		= search_in_dir_inode(argv[2] + j, strlen(argv[2]) - j, ind_tbl + parent_dir_inode);
 	if(possible_dup_dir_ent != NULL && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFREG)) {
 		fprintf(stderr, "File already exists, stop copying\n");
 		exit(EEXIST);
@@ -109,14 +109,19 @@ int main(int argc, char **argv) {
 	new_ent_rec_len += 3; new_ent_rec_len >>= 2; new_ent_rec_len <<= 2;
 
 	// Find the next block in memory for new directory
-	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode - 1);
+	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode);
 
 	// Setup context for this new dir
-	// new_ent -> inode = 0;									// Tobe set later
 	new_ent -> rec_len = 1024 - ((unsigned char *)new_ent - disk) % 1024;
 	new_ent -> name_len = new_ent_name_len;
 	new_ent -> file_type = EXT2_FT_DIR;
 	memcpy((unsigned char *)new_ent + 8, argv[2] + j, new_ent_name_len);
+	
+	// If inserted into a gap, restore new dir's rec_len
+	if(((struct ext2_dir_entry *)((char *)new_ent + new_ent_rec_len)) -> inode >= 12 && 
+		is_available_inode(((struct ext2_dir_entry *)((char *)new_ent + new_ent_rec_len)) -> inode) == 0) {
+		new_ent -> rec_len = new_ent_rec_len;
+	}
 
 	// Modify rec_len for previous directory
 	if(prev_dir_entry) {

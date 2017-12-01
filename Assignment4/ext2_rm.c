@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
     // Check if same directory (but not types) exists within parent directory
 	++i;
 	struct ext2_dir_entry *possible_dup_dir_ent 
-		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode - 1);
+		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
 	if(possible_dup_dir_ent == NULL) {
 		fprintf(stderr, "Directory not exists\n");
 		return EEXIST;
@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
     }
 
     // Remove this directory entry
-    free_inode(possible_dup_dir_ent -> inode - 1, false);
+    free_inode(possible_dup_dir_ent -> inode, false);
 
 }
 
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
  */
 void free_block(int block) {
     assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
-    blk_bmp[block >> 3] &= (~(1 << (block % 8)));
+    blk_bmp[block >> 3] &= (~(1 << (block % 8)));               // Clear bitmap
 }
 
 /**
@@ -153,7 +153,7 @@ void free_block(int block) {
 void free_dir_block(int block) {
 
     assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
-    blk_bmp[block >> 3] &= (~(1 << (block % 8)));
+    blk_bmp[block >> 3] &= (~(1 << (block % 8)));               // Clear bitmap
     sb -> s_free_blocks_count += 1;
     gt -> bg_free_blocks_count += 1;
     gt -> bg_used_dirs_count += 1;
@@ -170,7 +170,7 @@ void free_dir_block(int block) {
         cur_dir_size += 3; cur_dir_size >>= 2; cur_dir_size <<= 2;
         
         // Free this inode recursively
-        free_inode(((struct ext2_dir_entry *)(cur)) -> inode - 1, true);
+        free_inode(((struct ext2_dir_entry *)(cur)) -> inode, true);
         
         // Update cur to position of next file in this block
 		// cur += ((struct ext2_dir_entry *)cur) -> rec_len;
@@ -198,6 +198,12 @@ void free_inode(int inode, bool recursive) {
         fprintf(stderr, "Cannot remove directory\n");
         exit(EISDIR);
     }
+
+    // Clear bit map
+    assert((ind_bmp[inode >> 3] & (1 << (inode % 8))) >= 1);    // Make sure set
+    ind_bmp[inode >> 3] &= (~(1 << (inode % 8)));
+    sb -> s_free_inodes_count += 1;
+    gt -> bg_free_inodes_count += 1;
 
     // Remove every block in i_block
     int i, j, k;
@@ -290,10 +296,4 @@ void free_inode(int inode, bool recursive) {
             }
         }
     }
-
-    // Clear bit map
-    assert((ind_bmp[inode >> 3] & (1 << (inode % 8))) >= 1);    // Make sure set
-    ind_bmp[inode >> 3] &= (~(1 << (inode % 8)));
-    sb -> s_free_inodes_count += 1;
-    gt -> bg_free_inodes_count += 1;
 }
