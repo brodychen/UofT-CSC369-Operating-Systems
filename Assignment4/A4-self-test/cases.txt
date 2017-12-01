@@ -1,0 +1,5 @@
+cp emptydisk.img FILE_ONEBLK.txt /FILE_ONEBLK.txt
+rm twolevel.img /afile
+ln twolevel.img /afile /lnfile
+mkdir emptydisk.img /DIRECTORY
+mkdir emptydisk.img /DIRECTORY/

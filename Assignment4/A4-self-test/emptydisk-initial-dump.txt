@@ -1,0 +1,28 @@
+== INFORMATION ==
+Superblock
+  Inodes count:32
+  Blocks count:128
+  Free blocks count:105
+  Free inodes count:21
+Blockgroup
+  Block bitmap:3
+  Inode bitmap:4
+  Inode table:5
+  Free blocks count:105
+  Free inodes count:21
+  Used directories:2
+Inode bitmap: 11111111111000000000000000000000
+Block bitmap: 1111111111111111111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+
+== FILESYSTEM TREE ==
+[ 2] '.' EXT2_FT_DIR
+[ 2] '..' EXT2_FT_DIR
+[11] 'lost+found' EXT2_FT_DIR
+    [11] '.' EXT2_FT_DIR
+    [ 2] '..' EXT2_FT_DIR
+
+== INODE DUMP ==
+INODE 2: {size:1024, links:3, blocks:2}
+  TYPE: EXT2_S_IFDIR
+INODE 11: {size:12288, links:2, blocks:24}
+  TYPE: EXT2_S_IFDIR

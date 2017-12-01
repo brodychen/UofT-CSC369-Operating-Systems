@@ -103,7 +103,7 @@ int main() {
 int restore_inode(int inode) {
 	--inode;
 	
-	// If inode already taken
+	// If inode already taken, file has been overwritten
 	if((ind_bmp[inode >> 3] & (1 << (inode % 8))) == 0) {
 		return 0;
 	}
@@ -112,3 +112,35 @@ int restore_inode(int inode) {
 	return 1;
 }
 
+/**
+ * Recursively restore an dir/file
+ * 
+ * @arg1: inode number, starting from 1
+ * @arg2: whether recursive
+ * 
+ * @return: 	Success:	1
+ * 				Fail:		0
+ */
+
+
+
+int restore_inode(int inode, bool recursive) {
+	--inode;
+
+	int i;
+	struct ext2_inode *inode_p = ind_tbl + inode;
+
+	for(i = 0; i < 12; ++i) {
+		
+
+	}
+}
+
+
+int restore_block() {
+
+}
+
+int restore_dir_block() {
+	
+}
