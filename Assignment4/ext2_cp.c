@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 	}
 	++i;
 
-	int parent_dir_inode = EXT2_ROOT_INO - 1;			// Init with root inode
+	int parent_dir_inode = EXT2_ROOT_INO - 1;		// Init with root inode
 	// New sub-dir not in root, first cd to working directory
 	if(argv[3][0] != '.') {
 		parent_dir_inode = cd(argv[3], i);
