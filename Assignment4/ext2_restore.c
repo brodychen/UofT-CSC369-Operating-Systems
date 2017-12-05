@@ -93,7 +93,17 @@ int main() {
 
 	// Traverse parent dir's dir entry
 	// Search for gaps and check if name matches, and try to restore content to this dir entry
-	
+	int block = (struct ext2_inode *)(ind_tbl + parent_dir_inode) -> i_block[0];
+	unsigned char *block_p = disk + block * EXT2_BLOCK_SIZE;		// Start of block
+	unsigned char *cur = block_p + 24;								// Search pos
+	while(1) {
+		cur_dir_size = 8 + ((struct ext2_dir_entry *)(cur)) -> name_len;
+		cur_dir_size += 3; cur_dir_size >>= 2; cur_dir_size <<= 2;
+		// If namelen and reclen doesn't match, and doesn't reach the end of dir block
+		// Then a gap is found, and check if name matches
+		if(cur_dir_size != ((struct ext2_dir_entry *)(cur)) -> name_len
+			&& )
+	}
 }
 
 /**
