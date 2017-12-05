@@ -16,7 +16,7 @@
  * @arg1: An ext2 formatted virtual disk
  * @arg2: Absolute path to link of file
  *
- * @return:	Success:	0
+ * @return:	Success:				0
  * 			Not fully restored:		ENOENT
  */
 
@@ -54,7 +54,6 @@ int main() {
 	// Pointer to inode bitmap (number 5)
 	ind_bmp = disk + EXT2_BLOCK_SIZE * gt[0].bg_inode_bitmap;
 
-	// Cd to directory where new dir will be created
 	// Partition new dir and sub-directories
 	int i = strlen(argv[2]) - 1;
 	if(argv[2][i] == '/') argv[2][i--] = '\0';		// Eliminate trailing slashes
@@ -92,55 +91,111 @@ int main() {
         return EISDIR;
     }
 
+	// Traverse parent dir's dir entry
+	// Search for gaps and check if name matches, and try to restore content to this dir entry
+	
 }
 
 /**
- * Restore inode inode. 
- * @arg1: Inode number, starting at 1
- * @return:	Success:	1
- * 			Fail:		0
+ * Restore the entry
+ * 
+ * @arg1: A pointer to this entry
+ * @arg2: Whether to restore recursively
+ * @return: 	Success:	1
+ *				Fail:		0
  */
-int restore_inode(int inode) {
-	--inode;
-	
-	// If inode already taken, file has been overwritten
-	if((ind_bmp[inode >> 3] & (1 << (inode % 8))) == 0) {
+int restore_dir_entry(struct ext2_dir_entry *entry, bool recursive) {
+	assert(recursive == 0);
+
+	// If this entry is the first in block, i.e. inode set to 0 during deletion
+	// This entry cannot be restored
+	if(((char *)entry - disk) % 1024 == 0) {
+		fprintf(stderr, "Cannot restore first block in entry\n");
+		return 0;
+	}
+
+	// If the bitmap is set, cannot restore block
+	int inode = entry -> inode; assert(inode >= 12);
+	if(is_available_inode(inode) == 0) {
+		fprintf(stderr, "Inode assigned to other files, cannot restore\n");
 		return 0;
 	}
 	
-	ind_bmp[inode >> 3] |= (1 << (inode % 8));
-	return 1;
-}
+	// Possible to restore inode, but content of inode might have been overwritten
+	// If non-recursive, can't restore folder
+	struct ext2_inode *inode_p = (char *)(ind_tbl + inode - 1);
+	if(recursive == 0) {
+		if(get_inode_mode(inode) & EXT2_S_IFDIR) {
+			fprintf(stderr, "Can't restore directory\n");
+		}
+	}
 
-/**
- * Recursively restore an dir/file
- * 
- * @arg1: inode number, starting from 1
- * @arg2: whether recursive
- * 
- * @return: 	Success:	1
- * 				Fail:		0
- */
-
-
-
-int restore_inode(int inode, bool recursive) {
-	--inode;
-
+	// Restore every block
 	int i;
-	struct ext2_inode *inode_p = ind_tbl + inode;
+	for(i = 0; i < 12; ++i) {	// Direct blocks
 
-	for(i = 0; i < 12; ++i) {
-		
+		int block = (inode_p -> i_block)[i];
+		// Value 0 suggests no further block defined, restore ends
+		if(block == 0) {
+			return 1;
+		}
+
+		// If this block was taken, can't restore
+		if(is_available_block(block) == 0) {
+			fprintf("Block %d was overwritten, can't restore\n", (inode_p -> i_block)[i]);
+			return 0;
+		}
+
+		if(recursive) {
+			// Restore fails as long as one block can't recover
+			if(restore_block(block) == 0) {
+				fprintf("Failed to restore this directory block\n");
+				return 0;
+			}
+		}
+
+		else {
+			// Set block bitmap
+			blk_bmp[block >> 3] |= (1 << (block % 8));
+			sb -> s_free_blocks_count -= 1;
+			gt -> bg_free_blocks_count -= 1;
+		}
 
 	}
 }
 
+/**
+ * Recursively restore a dir block, called by restore_dir_entry()
+ * @arg1: Block number, starting from 0
+ */
+int restore_block(int block) {
+	unsigned char *block_p = disk + block * EXT2_BLOCK_SIZE;		// Start of block
+	unsigned char *cur = block_p;									// Search pos
 
-int restore_block() {
-
-}
-
-int restore_dir_block() {
+	int cur_dir_size, prev_dir_size;
 	
+	while(1) {
+		prev_dir_size = cur_dir_size;
+		cur_dir_size = 8 + ((struct ext2_dir_entry *)(cur)) -> name_len;
+		cur_dir_size += 3; cur_dir_size >>= 2; cur_dir_size <<= 2;
+
+		// Don't have to restore '.' and '..'
+		if(strncmp(((struct ext2_dir_entry *)(cur)) -> name, '.', 1) == 0);
+		else if(strncmp(((struct ext2_dir_entry *)(cur)) -> name, '.', 1) == 0);
+
+		else {
+			if(restore_dir_entry((struct ext2_dir_entry *)cur, true) == 0) {
+				fprintf(stderr, "Failed to restore directory block\n");
+				return 0;
+			}
+		}
+
+		// Update cur to position of next file in this block
+		// cur += ((struct ext2_dir_entry *)cur) -> rec_len;
+		cur += ((struct ext2_dir_entry *)(cur)) -> rec_len;
+        
+        // Not found if p reach end of block
+        if(cur - block_p >= EXT2_BLOCK_SIZE) return;
+
+	}
 }

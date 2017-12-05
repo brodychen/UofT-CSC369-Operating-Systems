@@ -232,6 +232,7 @@ struct ext2_dir_entry *prev_dir_entry;
 struct ext2_dir_entry *search_in_dir_inode(char *filename, int fnamelen, struct ext2_inode *dir);
 struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int block);
 bool is_available_inode(int inode);
+bool is_available_block(int block);
 
 /**
  * Function for changing directory.
@@ -454,12 +455,20 @@ unsigned short get_inode_mode(int inode_idx) {
 }
 
 /**
- * Returns whether inode is set in bitmap.
+ * Returns whether inode is available in bitmap.
  * @arg1: inode number (starting from 1)
  */
 bool is_available_inode(int inode) {
 	--inode;
 	return (ind_bmp[inode >> 3] & (1 << (inode % 8))) == 0;
+}
+
+/**
+ * Returns whether a block is available in bitmap.
+ * @arg1: block number (starting from 0)
+ */
+ bool is_available_block(int block) {
+	return (blk_bmp[block >> 3] & (1 << (block % 8))) == 0;
 }
 
 /**
