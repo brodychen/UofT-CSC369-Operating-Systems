@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "ext2.h"
+#include "ext2_helper.h"
 
 /**
  * This program works like cp, copying a file from native OS to disk image.

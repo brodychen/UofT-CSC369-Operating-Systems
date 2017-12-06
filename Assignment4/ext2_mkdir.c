@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "ext2.h"
+#include "ext2_helper.h"
 
 /**
  * This program works like mkdir, creating the final directory on the 

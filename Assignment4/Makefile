@@ -1,6 +1,6 @@
 TARGET = ext2_mkdir ext2_cp ext2_rm ext2_rm_bonus ext2_restore
-DEPS = ext2.h
-CFLAGS =  -g
+DEPS = ext2_helper.h
+CFLAGS = -g
 
 all: ${TARGET}
 

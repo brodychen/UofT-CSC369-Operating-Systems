@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "ext2.h"
+#include "ext2_helper.h"
 
 /**
  * Restores file.
