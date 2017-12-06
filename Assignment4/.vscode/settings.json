@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "fcntl.h": "c",
-        "stat.h": "c"
+        "stat.h": "c",
+        "unistd.h": "c"
     },
     "git.ignoreLimitWarning": true
 }
