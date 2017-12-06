@@ -110,7 +110,8 @@ int main(int argc, char **argv) {
 			if(cur_dir_size != ((struct ext2_dir_entry *)(cur)) -> rec_len) {
 				struct ext2_dir_entry *gap = (struct ext2_dir_entry *)(cur + cur_dir_size);
 				// Check if name matches
-				if(strncmp(argv[2] + i, gap -> name, strlen(argv[2]) - i) == 0) {
+				if(strncmp(argv[2] + i, gap -> name, strlen(argv[2]) - i) == 0
+					&& strlen(argv[2]) - i == gap -> name_len) {
 					// Have found the file to restore
 					if(restore_dir_entry(gap, false) == 0) {
 						fprintf(stderr, "Failed to recover file\n");
@@ -131,7 +132,7 @@ int main(int argc, char **argv) {
 		cur += cur_dir_size;
 		if(cur - block_p >= EXT2_BLOCK_SIZE) {
 			// Reached the end of file	
-			fprintf(stderr, "Didn't find gap in dir block\n");
+			fprintf(stderr, "Didn't find file\n");
 			return ENOENT;
 		} 
 	}
