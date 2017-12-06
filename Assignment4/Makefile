@@ -1,4 +1,4 @@
-TARGET = ext2_mkdir ext2_cp ext2_rm ext2_rm_bonus
+TARGET = ext2_mkdir ext2_cp ext2_rm ext2_rm_bonus ext2_restore
 DEPS = ext2.h
 CFLAGS =  -g
 
@@ -15,6 +15,9 @@ ext2_rm: ext2_rm.c ${DEPS}
 
 ext2_rm_bonus: ext2_rm_bonus.c ${DEPS}
 	gcc -o ext2_rm_bonus ext2_rm_bonus.c ${CFLAGS}
+
+ext2_restore: ext2_restore.c ${DEPS}
+	gcc -o ext2_restore ext2_restore.c ${CFLAGS}
 
 clean:
 	rm -f ${TARGET}

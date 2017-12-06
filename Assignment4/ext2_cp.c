@@ -97,8 +97,9 @@ int main(int argc, char **argv) {
 	// Check if file (but not dir) with same name already exists within parent directory
 	struct ext2_dir_entry *possible_dup_dir_ent 
 		= search_in_dir_inode(argv[2] + j, strlen(argv[2]) - j, ind_tbl + parent_dir_inode);
-	if(possible_dup_dir_ent != NULL && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFREG)) {
-		fprintf(stderr, "File already exists, stop copying\n");
+	// if(possible_dup_dir_ent != NULL && (get_inode_mode(possible_dup_dir_ent -> inode) & EXT2_S_IFREG)) {
+	if(possible_dup_dir_ent != NULL) {
+ 		fprintf(stderr, "File already exists, stop copying\n");
 		exit(EEXIST);
 	}
 

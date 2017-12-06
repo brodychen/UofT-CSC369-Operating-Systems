@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 	// New sub-dir not in root, first cd to working directory
 	if(i != -1) {
 		parent_dir_inode = cd(argv[2], i);
-		fprintf(stderr, "mkdir: cd to inode %d\n", parent_dir_inode + 1);
+		// fprintf(stderr, "mkdir: cd to inode %d\n", parent_dir_inode + 1);
 
 		// Cd fails because path not exparent_dir_inodeist
 		if(parent_dir_inode == -ENOENT) {
@@ -104,8 +104,14 @@ int main(int argc, char **argv) {
 	struct ext2_dir_entry *new_ent = search_in_dir_inode(NULL, new_ent_rec_len, ind_tbl + parent_dir_inode);
 
 	// Setup context for this new dir
-	// new_ent -> inode = 0;									// Tobe set later
-	new_ent -> rec_len = 1024 - ((unsigned char *)new_ent - disk) % 1024;
+	// Check if inserted to the end or into a gap
+	if(((unsigned char *)new_ent + (new_ent -> rec_len) - disk) % EXT2_BLOCK_SIZE == 0) {	
+		// Inserted to the end
+		new_ent -> rec_len = 1024 - ((unsigned char *)new_ent - disk) % 1024;	
+	}
+	else {
+		// Don't have to modify current rec_len	
+	}
 	new_ent -> name_len = new_ent_name_len;
 	new_ent -> file_type = EXT2_FT_DIR;
 	memcpy((unsigned char *)new_ent + 8, argv[2] + i, new_ent_name_len);

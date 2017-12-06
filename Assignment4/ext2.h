@@ -407,15 +407,15 @@ struct ext2_dir_entry *search_in_dir_block(char *filename, int fnamelen, int blo
 		if(filename == NULL) {	// Search for empty slot with enough size
 			
 			// Found enough space in this block
-			// if(((struct ext2_dir_entry *)(cur)) -> inode == 0 && 
-			if((((struct ext2_dir_entry *)(cur)) -> inode == 0 || is_available_inode((((struct ext2_dir_entry *)(cur)) -> inode))) && 
-				(1024 - ((cur - disk) % 1024) - cur_dir_size) >= fnamelen) {
-				
-				// Update rec_len of previous block
-				((struct ext2_dir_entry *)(cur - prev_dir_size)) -> rec_len = prev_dir_size;
-				fprintf(stderr, "Empty pos found at %d\n", (int)(cur - block_p));
 
-				return (struct ext2_dir_entry *)(cur);
+			if(((struct ext2_dir_entry *)(cur)) -> rec_len - cur_dir_size >= fnamelen) {
+				// Update rec_len of current block
+				((struct ext2_dir_entry *)(cur + cur_dir_size)) -> rec_len
+					= ((struct ext2_dir_entry *)(cur)) -> rec_len - cur_dir_size;
+				// Update rec_len of previous block
+				((struct ext2_dir_entry *)(cur)) -> rec_len = cur_dir_size;
+				
+				return ((struct ext2_dir_entry *)(cur + cur_dir_size));
 			}
 		}
 
