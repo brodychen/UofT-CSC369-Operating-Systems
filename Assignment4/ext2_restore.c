@@ -81,16 +81,8 @@ int main(int argc, char **argv) {
 			exit(ENOENT);
 		}
 	}
-	
-	// Check if file (but not directory) with same name already exists
 	++i;
-	struct ext2_dir_entry *possible_dup_dir_ent 
-		= search_in_dir_inode(argv[2] + i, strlen(argv[2]) - i, ind_tbl + parent_dir_inode);
-	if(possible_dup_dir_ent != NULL) {
-		fprintf(stderr, "Trying to restore existing file\n");
-		return ENOENT;
-	}
-
+	
 	// Traverse parent dir's dir entry
 	// Search for gaps and check if name matches, and try to restore content to this dir entry
 	int block = ((struct ext2_inode *)(ind_tbl + parent_dir_inode)) -> i_block[0];
@@ -122,7 +114,7 @@ int main(int argc, char **argv) {
 						struct ext2_dir_entry *prev_ent = (struct ext2_dir_entry *)(cur);
 						prev_ent -> rec_len = cur_dir_size;
 
-						fprintf(stderr, "Successfully recovered file\n");
+						// fprintf(stderr, "Successfully recovered file\n");
 						return 0;
 					}
 				}
@@ -152,14 +144,14 @@ int restore_dir_entry(struct ext2_dir_entry *entry, bool recursive) {
 	// If this entry is the first in block, i.e. inode set to 0 during deletion
 	// This entry cannot be restored
 	if(((unsigned char *)entry - disk) % 1024 == 0) {
-		fprintf(stderr, "Cannot restore first block in entry\n");
+		// fprintf(stderr, "Cannot restore first block in entry\n");
 		return 0;
 	}
 
 	// If the inode bitmap is set, cannot restore block
 	int inode = entry -> inode; assert(inode >= 12);
 	if(is_available_inode(inode) == 0) {
-		fprintf(stderr, "Inode assigned to other files, cannot restore\n");
+		// fprintf(stderr, "Inode assigned to other files, cannot restore\n");
 		return 0;
 	}
 	
@@ -168,7 +160,8 @@ int restore_dir_entry(struct ext2_dir_entry *entry, bool recursive) {
 	struct ext2_inode *inode_p = ind_tbl + inode - 1;
 	if(recursive == 0) {
 		if(get_inode_mode(inode) & EXT2_S_IFDIR) {
-			fprintf(stderr, "Can't restore directory\n");
+			// fprintf(stderr, "Can't restore directory\n");
+			return 0;
 		}
 	}
 
@@ -198,7 +191,9 @@ int restore_dir_entry(struct ext2_dir_entry *entry, bool recursive) {
 
 		else {
 			// Set block bitmap
+			--block;
 			blk_bmp[block >> 3] |= (1 << (block % 8));
+			++block;
 			sb -> s_free_blocks_count -= 1;
 			gt -> bg_free_blocks_count -= 1;
 		}

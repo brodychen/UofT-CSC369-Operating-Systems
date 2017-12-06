@@ -483,7 +483,7 @@ int allocate_inode() {
 		if((ind_bmp[i >> 3] & (1 << (i % 8))) == 0) {
 			ind_bmp[i >> 3] |= (1 << (i % 8));
 			memset(ind_tbl + i, 0, sizeof(struct ext2_inode));
-			fprintf(stderr, "Allocating inode %d\n", i + 1);
+			// fprintf(stderr, "Allocating inode %d\n", i + 1);
 			return i + 1;
 		}
 	}
@@ -504,10 +504,10 @@ int allocate_inode() {
 int allocate_block() {
 	int i;
 	for(i = 8; i < sb -> s_blocks_count; ++i) {		// Skip inode table stuff
-		if((blk_bmp[i >> 3] & (1 << (i % 8))) == 0) {
-			blk_bmp[i >> 3] |= (1 << (i % 8));
+		if((blk_bmp[(i-1) >> 3] & (1 << ((i-1) % 8))) == 0) {
+			blk_bmp[(i-1) >> 3] |= (1 << ((i-1) % 8));
 			memset(disk + i * EXT2_BLOCK_SIZE, 0, EXT2_BLOCK_SIZE);
-			fprintf(stderr, "Allocating block %d\n", i + 1);
+			// fprintf(stderr, "Allocating block %d\n", i + 1);
 			return i + 1;
 		}
 	}

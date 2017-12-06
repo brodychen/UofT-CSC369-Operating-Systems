@@ -142,8 +142,10 @@ int main(int argc, char **argv) {
  * @arg1: block number (starting from 0)
  */
 void free_block(int block) {
+    --block;
     assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
     blk_bmp[block >> 3] &= (~(1 << (block % 8)));               // Clear bitmap
+    ++block;
 }
 
 /**
@@ -152,9 +154,10 @@ void free_block(int block) {
  * @arg1: block number (starting from 0)
  */
 void free_dir_block(int block) {
-
+    --block;
     assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
     blk_bmp[block >> 3] &= (~(1 << (block % 8)));               // Clear bitmap
+    ++block;
     sb -> s_free_blocks_count += 1;
     gt -> bg_free_blocks_count += 1;
     gt -> bg_used_dirs_count += 1;

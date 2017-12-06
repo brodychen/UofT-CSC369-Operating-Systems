@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 	// New sub-dir not in root, first cd to working directory
 	if(argv[3][0] != '.') {
 		parent_dir_inode = cd(argv[3], i);
-		fprintf(stderr, "mkdir: cd to inode %d\n", parent_dir_inode + 1);
+		// fprintf(stderr, "mkdir: cd to inode %d\n", parent_dir_inode + 1);
 
 		// Cd fails because path not exist
 		if(parent_dir_inode == -ENOENT) {
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
 		(prev_dir_entry -> rec_len) += 3;
 		(prev_dir_entry -> rec_len) >>= 2;
 		(prev_dir_entry -> rec_len) <<= 2;
-		fprintf(stderr, "previous dir rec_len modified to %d\n", (prev_dir_entry -> rec_len));
+		// fprintf(stderr, "previous dir rec_len modified to %d\n", (prev_dir_entry -> rec_len));
 	}
 
 	// Find a empty inode for this file

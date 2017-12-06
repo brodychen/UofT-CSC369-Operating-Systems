@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     bool input_valid = 1;   // Whether input is valid
     if(argc == 4) {
         if(argv[2][0] == '-' && argv[2][1] == 'r') {
-            fprintf(stderr, "Removing directory recursively\n");
+            // fprintf(stderr, "Removing directory recursively\n");
             recursive = 1;
             argv[2] = argv[3];  // argv[2] points to file/dir name
         }
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
     // Set context of previous dir entry (if exists)
     if(prev_dir_entry){
         prev_dir_entry -> rec_len += possible_dup_dir_ent -> rec_len;
-        fprintf(stderr, "Prev rec_len restored to %d\n", prev_dir_entry -> rec_len);
+        // fprintf(stderr, "Prev rec_len restored to %d\n", prev_dir_entry -> rec_len);
     }
     // Removed entry is first in dir block
     else {
@@ -147,10 +147,11 @@ int main(int argc, char **argv) {
  * @arg1: block number (starting from 0)
  */
 void free_block(int block) {
-    fprintf(stderr, "Freeing block %d\n", block);
-
+    // fprintf(stderr, "Freeing block %d\n", block);
+    --block;
     assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
     blk_bmp[block >> 3] &= (~(1 << (block % 8)));
+    ++block;
 }
 
 /**
@@ -159,10 +160,11 @@ void free_block(int block) {
  * @arg1: block number (starting from 0)
  */
 void free_dir_block(int block) {
-    fprintf(stderr, "Freeing dir block %d\n", block);
-
+    // fprintf(stderr, "Freeing dir block %d\n", block);
+    --block;
     assert((blk_bmp[block >> 3] & (1 << (block % 8))) >= 1);    // Make sure bit is set
     blk_bmp[block >> 3] &= (~(1 << (block % 8)));
+    ++block;
     sb -> s_free_blocks_count += 1;
     gt -> bg_free_blocks_count += 1;
     gt -> bg_used_dirs_count += 1;
@@ -311,7 +313,7 @@ void free_inode(int inode, bool recursive) {
     }
 
     // Clear bit map
-    fprintf(stderr, "trying to clear bitmap of %d\n", inode + 1);
+    // fprintf(stderr, "trying to clear bitmap of %d\n", inode + 1);
     assert((ind_bmp[inode >> 3] & (1 << (inode % 8))) >= 1);    // Make sure set
     ind_bmp[inode >> 3] &= ~(1 << (inode % 8));
     sb -> s_free_inodes_count += 1;
