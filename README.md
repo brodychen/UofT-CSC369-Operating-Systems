@@ -21,8 +21,8 @@ Use mutexes to simulate a crossroad, where cars may arrive and leave in all dire
 
 ## Assignment 4: The Ext2 File System
 Explore the implementation of the ext2 file system. Write tools to modify ext2-format virtual disks. Functions to implement includes:
-* ls
-* mkdir
+* ls: List all files
+* mkdir: Make an empty directory
 * cp: Copy file (or directory recursively)
 * rm: Remove file (or directory recursively) 
 * ln: Create soft/hard link
