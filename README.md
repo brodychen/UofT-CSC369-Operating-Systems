@@ -7,7 +7,8 @@ Hijack (intercept) system calls by writing and installing a basic kernel module 
 
 
 ## Assignment 2: Synchronization
-Use mutexes to simulate a crossroad, where cars may arrive and leave in all directions.
+Use mutexes to simulate a crossroad, where cars may arrive and leave in all directions.  
+Check for race conditions with valgrind, an automated memory management tool that can automatically detect many memory management and threading bugs.
 
 
 ## Assignment 3: Page Tables and Replacement Algorithms
